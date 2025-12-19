@@ -1,0 +1,75 @@
+---
+description: Frontend, React & UI Convention Rules
+globs: ["src/app/**/*", "src/components/**/*", "src/features/**/*.tsx"]
+---
+
+# Frontend & UI Conventions
+
+## Feature Component Structure
+Inside `src/features/[feature]/components/`, structure components by their responsibility:
+
+1.  **Container/Page Components**:
+    *   Responsible for layout and passing data down.
+    *   Can be Server Components.
+2.  **Interactive Components** (`form.tsx`, `list.tsx`):
+    *   Use `'use client'`.
+    *   Handle user events (clicks, submits).
+    *   Call Server Actions for mutations.
+3.  **UI Parts**:
+    *   Small, reusable parts specific to the feature (e.g., `keyword-badge.tsx`).
+
+## Data Loading Strategy
+*   **App Shell Pattern**: Load critical data (User, Project) in `dashboard/layout.tsx`.
+*   **Suspense Streaming**: Wrap heavy UI sections (Charts, Tables) in `<Suspense>` boundaries.
+*   **Skeletons**: MANDATORY for async components. Create `[component]-skeleton.tsx` next to the component.
+*   **No Initial UseEffect**: Do NOT use `useEffect` to fetch initial page data. Use Server Components.
+
+## User Feedback & Notifications
+*   **Library**: Use `sonner` for all toast notifications.
+*   **Pattern**: Components calling Server Actions MUST handle the response state:
+    *   **Success**: Show a success toast (e.g., `toast.success('Project updated')`).
+    *   **Error**: Show an error toast with the returned error message.
+    *   **Loading**: Disable buttons/inputs during the action (use `isPending` or local loading state).
+
+## Hooks Convention (`src/features/[feature]/hooks/`)
+*   **Purpose**: Abstract complex state logic or reusable behaviors.
+*   **Naming**: `use-[behavior].ts` (e.g., `use-keyword-filters.ts`).
+*   **Return**: Return an object `{ state, actions }` or tuple `[state, actions]`.
+
+```typescript
+// src/features/keywords/hooks/use-keyword-selection.ts
+export function useKeywordSelection() {
+  const [selected, setSelected] = useState<string[]>([])
+  
+  const toggle = (id: string) => { ... }
+  const clear = () => setSelected([])
+  
+  return { selected, toggle, clear }
+}
+```
+
+## Styling (Tailwind CSS)
+*   **Utility First**: Use standard Tailwind utility classes.
+*   **Consistency**: Use the spacing scale (e.g., `gap-4`, `p-6`).
+*   **Colors**: Use semantic variables (e.g., `bg-background`, `text-primary`) for Dark Mode support.
+*   **CN Helper**: Always use `cn()` from `src/lib/utils` when merging classes.
+
+## Type Safety
+*   **Props**: Explicitly type all component props using `interface`.
+*   **No Any**: `any` is strictly forbidden.
+*   **Imports**: Import shared types from `@/types/db`.
+
+**Example**:
+```tsx
+import type { Keyword } from '@/types/db'
+
+interface KeywordRowProps {
+  keyword: Keyword
+  isSelected: boolean
+  onToggle: (id: string) => void
+}
+
+export function KeywordRow({ keyword, isSelected, onToggle }: KeywordRowProps) {
+  // ...
+}
+```

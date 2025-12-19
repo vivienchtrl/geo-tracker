@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "openai": "https://esm.sh/openai@4.73.0",
+    "mistral": "https://esm.sh/@mistralai/mistralai",
+    "@google/genai": "npm:@google/genai"
+  }
+}

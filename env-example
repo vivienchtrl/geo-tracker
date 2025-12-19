@@ -1,0 +1,13 @@
+# Database
+DATABASE_URL=postgres://postgres.xxxx:password@aws-0-region.pooler.supabase.com:6543/postgres
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Google OAuth (Search Console & Analytics)
+

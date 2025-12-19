@@ -1,0 +1,46 @@
+---
+description: Design guidelines for the Landing Page
+globs: src/app/(marketing)/**, src/components/landing-page/**, src/app/page.tsx
+---
+
+# Landing Page Design System
+
+This project follows a specific design theme for the landing page, characterized by dashed borders and a structured grid layout.
+
+## Core Design Principles
+
+1.  **Dashed Borders**: 
+    - Use dashed borders (`border-dashed`) for section dividers and container boundaries.
+    - Border color should be subtle but visible (e.g., `border-border` or specific neutral shade).
+
+2.  **Section Layout**:
+    - **Vertical Rhythm**: Sections are stacked vertically.
+    - **Horizontal Constraints**: Content is contained within a central column that has left and right borders.
+    - **Full-Width Separators**: Sections are separated by full-width dashed lines (top and bottom borders) within the container.
+    - **Padding**: 
+        - Side borders should have external padding or margin to center the content on the screen, or the container itself has side borders.
+        - Sections inside the container typically span the full width of the container (no horizontal padding between content and side border, or specific padding as per design). 
+        - *Specific Requirement*: "Sections have top and bottom borders without padding, and side borders with a little padding." (Interpret this as: The main container has side borders. Inside, sections are divided by lines that touch these side borders).
+
+3.  **Typography & Spacing**:
+    - Use strict spacing from Tailwind (gap-4, p-6, etc.).
+    - Fonts should be consistent with the app's theme (Inter/Sans).
+
+## Implementation Rules
+
+- **Container Component**: Create a reusable wrapper for the main content area that provides the side borders.
+- **Section Component**: Create a reusable section component that provides the top/bottom borders.
+- **Tailwind Utility**: Use `border-dashed` `border-border/40` (or similar opacity) for the lines.
+
+## Example Structure
+
+```tsx
+<div className="container mx-auto max-w-5xl border-x border-dashed border-border/50">
+  <section className="border-b border-dashed border-border/50 py-12">
+    {/* Content */}
+  </section>
+  <section className="border-b border-dashed border-border/50 py-12">
+    {/* Content */}
+  </section>
+</div>
+```

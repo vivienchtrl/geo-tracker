@@ -1,0 +1,124 @@
+---
+alwaysApply: true
+---
+# Project 
+
+The project is an GEO AEO / Traffic monotoring for website that helps them to analyze their traffic and indexability in the web. 
+The objective is to helps website and brand  having data on their visibility on the web and find their competitors based on their own request. 
+
+Features wanted : 
+
+------------- MAIN ------------------
+- Ultra detailed dashboard analytics
+- Background function that fetch and gather the required data from LLM or DataforSEO.
+- Google analytics and Search console integrations
+- Ai copilot to synthetize data and brainstorm strategy
+------------------------SECONDARY----------------------------------
+Coded Tag that needs to be added on website header to track all the activity on their site
+Tools to create content
+
+## Technical Stack
+
+- **Framework**: Next.js 15+ (App Router)
+- **Language**: TypeScript (Strict Mode)
+- **Styling**: Tailwind CSS v4, Shadcn UI, Radix UI
+- **Database**: PostgreSQL (via Supabase)
+- **ORM**: Drizzle ORM
+- **Auth**: Supabase Auth (SSR)
+- **Analytics**: PostHog
+- **Payments**: Stripe
+- **AI/LLM for websearch and features**: Google Gemini / OpenAI / Perplexity pour les analyses Web Seach
+- **AI/LLM for analytics and IA workflow**: Mistral IA
+- **Validation**: Zod
+- **Forms**: React Hook Form
+- **Internationalization**: next-intl
+
+# Application Architecture & Structure
+
+## Directory Structure
+The project follows a **Feature-Based Module** architecture. Each major domain of the application (Auth, Project, Billing, etc.) is a self-contained "Feature".
+
+```
+src/
+├── app/                  # Next.js App Router (Routing Layer ONLY)
+│   ├── dashboard/        # Protected Application Routes
+│   │   ├── page.tsx      # Server Component (Fetches Data)
+│   │   └── layout.tsx    # Server Layout (App Shell)
+│   ├── api/              # API Routes (Edge Cases only)
+│   └── (marketing)/      # Public Marketing Pages
+│
+├── features/             # Feature-Based Modules (CORE LOGIC)
+│   ├── [feature-name]/   # e.g., 'keywords', 'billing'
+│   │   ├── components/   # Feature-specific UI Components
+│   │   │   ├── [sub-feature]/  # Group complex components
+│   │   │   └── ...
+│   │   ├── hooks/        # Feature-specific Custom Hooks
+│   │   ├── utils/        # Feature-specific Helpers/Formatters
+│   │   ├── providers/    # Feature-specific Context Providers
+│   │   └── actions.ts    # Server Actions (Mutations & Form Handling)
+│
+├── backend/              # Server-Side Business Layer
+│   ├── db/               # Drizzle Schema & Models
+│   ├── services/         # Business Logic, Complex Queries, Caching
+│   └── validators/       # Zod Schemas for Data Validation
+│
+├── components/           # Shared Global UI
+│   ├── ui/               # Shadcn UI Primitives (Dumb Components)
+│   └── dashboard/        # Shared Dashboard Layout Components (Sidebar, Header)
+│
+├── lib/                  # Shared Utilities & Libraries (DB, Stripe, etc.)
+└── types/                # Global Shared Types (DB Models)
+```
+
+## Page Component Structure
+Every page in `src/app/` should follow this structure to separate **Data Fetching** from **UI Rendering**.
+
+### 1. The Server Page (`page.tsx`)
+**Responsibility**: Fetch data, Validate Auth, Render Shell.
+```tsx
+// src/app/dashboard/keywords/page.tsx
+import { Suspense } from 'react'
+import { getKeywords } from '@/backend/services/keywords.service'
+import { KeywordsList } from '@/features/keywords/components/keywords-list'
+import { KeywordsSkeleton } from '@/features/keywords/components/keywords-skeleton'
+
+export default async function KeywordsPage() {
+  // 1. Fetch Data (Server Side)
+  // Note: We don't await here if we want to stream the component
+  // OR await here if it's critical for the initial render
+  
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Keywords</h1>
+      
+      {/* 2. Render Feature Component with Suspense */}
+      <Suspense fallback={<KeywordsSkeleton />}>
+        <KeywordsListWrapper />
+      </Suspense>
+    </div>
+  )
+}
+
+// Wrapper to handle async data fetching if streaming
+async function KeywordsListWrapper() {
+  const keywords = await getKeywords()
+  return <KeywordsList initialData={keywords} />
+}
+```
+
+## Core Architectural Principles
+
+1.  **Separation of Concerns**
+    *   **UI Layer (`app/`, `features/**/components`)**: Handles rendering and user interaction.
+    *   **Feature Layer (`features/`)**: Encapsulates domain-specific logic, state, and actions.
+    *   **Business Layer (`backend/`)**: Handles database interactions, external APIs, and core logic.
+
+2.  **Server-First Data Fetching**
+    *   **Fetch on Server**: All initial data loading must happen in Server Components.
+    *   **Hydrate on Client**: Pass initial data to Client Context Providers or Props.
+    *   **No "Waterfall"**: Avoid fetching critical data inside client `useEffect`.
+
+3.  **Strict Type Safety**
+    *   **No `any`**: Explicitly forbid the use of `any`.
+    *   **Infer Types**: Use `InferSelectModel` from Drizzle in `@/types/db`.
+    *   **Shared Types**: Import database models from `@/types/db`.

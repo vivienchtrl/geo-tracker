@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1765843780626,
+      "tag": "0000_oval_iron_lad",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765913821629,
+      "tag": "0001_redundant_killraven",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766068330986,
+      "tag": "0002_reflective_energizer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766070574356,
+      "tag": "0003_outgoing_tiger_shark",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1766076599676,
+      "tag": "0004_happy_thaddeus_ross",
+      "breakpoints": true
+    }
+  ]
+}

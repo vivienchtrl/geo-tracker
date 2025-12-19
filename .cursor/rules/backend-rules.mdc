@@ -1,0 +1,105 @@
+---
+alwaysApply: true
+---
+# Backend & Database Conventions
+
+## The "Service-Action" Pattern
+We strictly separate the **Interface (Actions)** from the **Logic (Services)**.
+
+### 1. Validators (`src/backend/validators/*.validators.ts`)
+**Responsibility**: Define the "Contract" for data integrity.
+*   Use Zod for all schemas.
+*   Export both the **Schema** and the **Type**.
+*   Naming: `[entity].validators.ts`
+
+```typescript
+// src/backend/validators/keywords.validators.ts
+import { z } from "zod"
+
+export const createKeywordSchema = z.object({
+  term: z.string().min(1),
+  tags: z.array(z.string()).optional()
+})
+
+export type CreateKeywordInput = z.infer<typeof createKeywordSchema>
+```
+
+### 2. Services (`src/backend/services/*.service.ts`)
+**Responsibility**: The "Brain". Handles DB interactions, external APIs, and caching.
+*   **Pure Logic**: No `redirect()`, no `formData`, no `headers()`.
+*   **Typed Inputs**: Functions accept strict, typed arguments (defined in validators).
+*   **Caching**: Use `unstable_cache` for expensive read operations.
+*   **Error Handling**: Throw standard Errors to be caught by Actions.
+*   **Naming**: `[entity].service.ts`
+
+**Standard Service Structure**:
+```typescript
+// src/backend/services/keywords.service.ts
+import { db } from "@/lib/db"
+import { keywords } from "@/backend/db/schema"
+import { unstable_cache } from "next/cache"
+import type { CreateKeywordInput } from "@/backend/validators/keywords.validators"
+
+// READ (Cached)
+export const getKeywordsByProject = unstable_cache(
+  async (projectId: string) => {
+    return await db.query.keywords.findMany({
+      where: (t, { eq }) => eq(t.projectId, projectId)
+    })
+  },
+  ['project-keywords'],
+  { revalidate: 3600, tags: ['keywords'] }
+)
+
+// WRITE (Direct DB)
+export async function createKeyword(projectId: string, data: CreateKeywordInput) {
+  // Business Logic checks (e.g., plan limits) go here
+  return await db.insert(keywords).values({ ...data, projectId }).returning()
+}
+```
+
+### 3. Server Actions (`src/features/**/actions.ts`)
+**Responsibility**: The "Gatekeeper". Connects Frontend to Services.
+*   **Auth First**: ALWAYS check `supabase.auth.getUser()` first.
+*   **Validation**: Validate raw inputs using Zod schemas from `validators/`.
+*   **Mutation**: Handle `revalidatePath` (cache invalidation) and `redirect`.
+*   **Return**: Return standard response objects `{ success: boolean, data?: T, error?: string }`.
+
+**Standard Action Structure**:
+```typescript
+// src/features/keywords/actions.ts
+'use server'
+
+import { createKeywordSchema } from "@/backend/validators/keywords.validators"
+import { createKeyword } from "@/backend/services/keywords.service"
+import { revalidateTag } from "next/cache"
+
+export async function createKeywordAction(formData: FormData) {
+  // 1. Auth Check
+  const session = await getSession() // Helper
+  
+  // 2. Parse & Validate
+  const rawData = Object.fromEntries(formData)
+  const validation = createKeywordSchema.safeParse(rawData)
+  
+  if (!validation.success) {
+    return { success: false, error: "Invalid data" }
+  }
+
+  // 3. Call Service
+  try {
+    await createKeyword(session.projectId, validation.data)
+    
+    // 4. Revalidate & Return
+    revalidateTag('keywords')
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: "Failed to create keyword" }
+  }
+}
+```
+
+## Database Access (Drizzle ORM)
+*   **Schema**: Defined in `src/backend/db/schema.ts`.
+*   **Complex Queries**: Use `db.query.table.findFirst` for simple reads. Use `db.select().from()...` for complex joins.
+*   **Transactions**: Wrap multiple write operations in `db.transaction(async (tx) => { ... })`.
