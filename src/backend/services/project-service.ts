@@ -115,8 +115,8 @@ export const getProjectWithRole = cache(async (
 
       return { 
         project: projectData.project as Project, 
-        role: membership.role as ProjectRole | null
-      } as ProjectWithRole | null
+        role: membership.role as ProjectRole
+      }
     },
     [`project-access-${projectId}-${userId}`],
     { revalidate: 3600, tags: ['projects', `project-${projectId}`] }
