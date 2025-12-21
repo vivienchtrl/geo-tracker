@@ -90,6 +90,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
 
   if (!projects || projects.length === 0) {
     return {
+      crawlerLogs: [],
       overview: { totalScans: 0, mentionCount: 0, visibilityRate: 0, averageRank: 0, sentimentScore: 0 },
       models: [],
       competitors: [],
@@ -122,6 +123,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
 
   if (scans.length === 0) {
      return {
+        crawlerLogs: [],
         overview: { totalScans: 0, mentionCount: 0, visibilityRate: 0, averageRank: 0, sentimentScore: 0 },
         models: [],
         competitors: [],
@@ -357,6 +359,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
   })
 
   return {
+    crawlerLogs: [],
     overview: {
       totalScans: scans.length,
       mentionCount,
