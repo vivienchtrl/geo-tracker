@@ -35,11 +35,19 @@ export default function RootLayout({
           </div>
         </ThemeProvider>
 
+        {/* Geo Tracker */}
         <Script
           src="https://geo-tracker-teal.vercel.app/tracker.js"
           data-project-id="6699bf7c-b3fb-4853-bdf9-54bebd316a1f"
           strategy="afterInteractive"
         />
+        <noscript>
+          <img
+            src="https://geo-tracker-teal.vercel.app/api/tracking/pixel?projectId=6699bf7c-b3fb-4853-bdf9-54bebd316a1f"
+            style={{ position: "absolute", left: "-9999px" }}
+            alt=""
+          />
+        </noscript>
       </body>
     </html>
   );
