@@ -40,6 +40,7 @@ export type SearchDetail = {
 }
 
 export type DashboardMetrics = {
+  crawlerLogs: { id: string; botName: string; path: string; createdAt: string; source: string }[]
   overview: {
     totalScans: number
     mentionCount: number
