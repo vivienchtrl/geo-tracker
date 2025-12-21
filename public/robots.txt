@@ -1,0 +1,188 @@
+# ============================================================
+# Geo Tracker - Robots.txt Configuration
+# ============================================================
+# 
+# Purpose: Allow AI crawlers and search engines to index your site
+# while respecting their crawling policies
+#
+# Note: This file ensures that bots like ChatGPT, Claude, Perplexity, etc.
+# can crawl your website so that Geo Tracker can capture their activity
+#
+# Last Updated: December 22, 2025
+# ============================================================
+
+# ============================================================
+# AI CRAWLERS - Allow all major AI companies
+# ============================================================
+
+# OpenAI GPTBot (used by ChatGPT, GPT-4, etc.)
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 1
+
+# Anthropic Claude (used by Claude web browsing)
+User-agent: Claude-Web
+Allow: /
+Crawl-delay: 1
+
+User-agent: Claude-Bot
+Allow: /
+Crawl-delay: 1
+
+User-agent: AnthropicBot
+Allow: /
+Crawl-delay: 1
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: pplx-bot
+Allow: /
+Crawl-delay: 1
+
+# Google AI Crawlers (Gemini, SGE, etc.)
+User-agent: Googlebot-Extended
+Allow: /
+Crawl-delay: 1
+
+# Microsoft Copilot
+User-agent: Copilot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Microsoft-Copilot
+Allow: /
+Crawl-delay: 1
+
+# Apple Intelligence Crawler
+User-agent: AppleBot
+Allow: /
+Crawl-delay: 1
+
+# ============================================================
+# SEARCH ENGINES - Standard crawlers
+# ============================================================
+
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: msnbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# ============================================================
+# SOCIAL MEDIA CRAWLERS
+# ============================================================
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: Telegrambot
+Allow: /
+
+User-agent: InstagramBot
+Allow: /
+
+# ============================================================
+# MONITORING & ANALYTICS CRAWLERS
+# ============================================================
+
+User-agent: AmazonBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: SemrushBot
+Allow: /
+
+User-agent: DotBot
+Allow: /
+
+User-agent: MJ12bot
+Allow: /
+
+# ============================================================
+# SPECIFIC PATHS (OPTIONAL)
+# ============================================================
+
+# Disallow admin paths
+Disallow: /admin/
+Disallow: /dashboard/admin/
+Disallow: /api/
+
+# Disallow private content
+Disallow: /private/
+Disallow: /user/account/
+
+# Allow images, CSS, JS
+Allow: *.js
+Allow: *.css
+Allow: *.jpg
+Allow: *.png
+Allow: *.gif
+Allow: *.svg
+
+# ============================================================
+# SITEMAPS
+# ============================================================
+
+Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://yourdomain.com/sitemap-posts.xml
+Sitemap: https://yourdomain.com/sitemap-pages.xml
+
+# ============================================================
+# DEFAULT RULE (Catch-all)
+# ============================================================
+
+User-agent: *
+Allow: /
+Crawl-delay: 2
+Request-rate: 30/60
+
+# ============================================================
+# NOTES
+# ============================================================
+#
+# Crawl-delay: Time between requests in seconds (recommended 1-2)
+# Request-rate: Maximum requests per time period
+#
+# For Geo Tracker to work properly:
+# - Make sure AI crawlers (GPTBot, Claude-Web, PerplexityBot) have Allow: /
+# - Don't use Disallow: / unless you want to hide from all bots
+# - You can customize paths but keep AI crawlers enabled
+#
+# Test your robots.txt:
+# 1. Vercel: https://yourdomain.com/robots.txt
+# 2. Google Search Console: Check for errors
+# 3. SEO tools: Use MozBar or similar
+#
+# ============================================================
+

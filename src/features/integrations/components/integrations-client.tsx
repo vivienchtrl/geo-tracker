@@ -23,6 +23,14 @@ import {
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { disconnectIntegrationAction, checkTrackerSignalAction } from "../actions";
+import { generateRobustSnippet } from "@/features/tracking/utils/snippet-generator";
+import { Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface IntegrationState {
   google: boolean;
@@ -47,10 +55,8 @@ export function IntegrationsClient({
   const [copied, setCopied] = useState(false);
 
   // Generate tracker script snippet
-  const trackerSnippet = `<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/tracker.js" data-project-id="${projectId}" async defer></script>
-<noscript>
-  <img src="${typeof window !== 'undefined' ? window.location.origin : ''}/api/tracking/pixel?projectId=${projectId}" style="position:absolute; left:-9999px;" alt="" />
-</noscript>`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const trackerSnippet = generateRobustSnippet({ projectId, baseUrl });
 
   const handleConnectGoogle = () => {
     window.location.href = `/api/auth/google/connect?projectId=${projectId}`;
@@ -133,10 +139,22 @@ export function IntegrationsClient({
               <Badge variant="outline">Pending Setup</Badge>
             )}
           </CardTitle>
-          <CardDescription>
-            Track visitors, bots, and AI crawlers on your website with our
-            lightweight tracking script.
-          </CardDescription>
+        <CardDescription className="flex items-center gap-2">
+          Track visitors, bots, and AI crawlers on your website with our
+          high-reliability tracking system.
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-[10px] leading-relaxed">
+                Our hybrid snippet captures both standard browsers and 
+                fast-moving AI bots (like ChatGPT) by using a combination 
+                of JS and an invisible beacon.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Installation Instructions */}

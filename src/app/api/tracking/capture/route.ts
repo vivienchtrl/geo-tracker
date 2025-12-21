@@ -19,6 +19,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { capturePageVisit } from "@/backend/services/tracking.service";
+import { detectBot, isKnownAIProvider } from "@/features/tracking/utils/bot-detector";
 
 // Response headers for CORS
 const corsHeaders = {
@@ -42,7 +43,7 @@ export async function OPTIONS() {
 }
 
 /**
- * Handle tracking capture requests
+ * Handle tracking capture requests with enhanced diagnostics
  */
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +52,10 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
+      console.warn("[CAPTURE] Invalid JSON received", {
+        timestamp: new Date().toISOString(),
+        url: request.url,
+      });
       return NextResponse.json(
         { error: "Invalid JSON" },
         { status: 400, headers: corsHeaders }
@@ -58,25 +63,57 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Extract client IP from headers
-    // Priority: CDN headers → reverse proxy → direct
     const ipAddress =
-      request.headers.get("cf-connecting-ip") || // Cloudflare
+      request.headers.get("cf-connecting-ip") ||
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       request.headers.get("x-client-ip") ||
       "unknown";
 
-    // LOG DE DIAGNOSTIC POUR JS CAPTURE
+    // 3. Extract User-Agent
     const userAgent = request.headers.get("user-agent") || "unknown";
-    console.log(`[CAPTURE-JS] Requête reçue. User-Agent: ${userAgent}`);
+    
+    // 4. Perform bot detection immediately (for diagnostic logs)
+    const botDetection = detectBot(userAgent);
+    const isAIBot = isKnownAIProvider(userAgent);
 
-    // 3. Capture the visit (service handles validation)
+    // 5. DIAGNOSTIC LOG - Request received
+    console.log("[CAPTURE] Request received", {
+      timestamp: new Date().toISOString(),
+      source: "javascript",
+      ipAddress,
+      userAgent,
+      botDetection: {
+        type: botDetection.botType,
+        name: botDetection.botName,
+        category: botDetection.category,
+        confidence: botDetection.confidence,
+        isAIProvider: isAIBot,
+      },
+    });
+
+    // 6. Capture the visit (service handles validation and DB insert)
     const result = await capturePageVisit(
       body as Parameters<typeof capturePageVisit>[0],
       ipAddress
     );
 
-    // 4. Return response
+    // 7. DIAGNOSTIC LOG - Result
+    if (result.success) {
+      console.log("[CAPTURE] ✅ Success", {
+        timestamp: new Date().toISOString(),
+        visitId: result.id,
+        botType: botDetection.botType,
+      });
+    } else {
+      console.warn("[CAPTURE] ❌ Failed", {
+        timestamp: new Date().toISOString(),
+        error: result.message,
+        botType: botDetection.botType,
+      });
+    }
+
+    // 8. Return response
     // Always return 200 for successful tracking to not leak info
     return NextResponse.json(
       {
@@ -91,7 +128,11 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("[Tracker API] Error:", error);
+    console.error("[CAPTURE] Critical error:", {
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500, headers: corsHeaders }

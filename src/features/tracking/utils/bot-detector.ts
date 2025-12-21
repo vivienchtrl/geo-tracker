@@ -22,13 +22,17 @@ export type BotType =
   | "bytedance"
   | "commoncrawl"
   | "facebook"
+  | "instagram"
+  | "twitter"
+  | "copilot"
+  | "gemini"
   | "other"
   | null;
 
 export interface BotDetectionResult {
   botType: BotType;
   botName: string | null;
-  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | null;
+  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "browser_bot" | null;
   confidence: "high" | "medium" | "low";
   userAgentPattern?: string; // Matched pattern source
 }
@@ -37,76 +41,186 @@ interface BotPattern {
   pattern: RegExp;
   botType: BotType;
   botName: string;
-  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "other";
+  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "browser_bot" | "other";
   confidence: "high" | "medium" | "low";
+  description?: string; // For debugging
 }
 
 /**
  * Comprehensive bot detection patterns
  * Ordered by specificity (most specific first) for accuracy
+ * 
+ * Sources:
+ * - https://openai.com/robots.txt (GPTBot)
+ * - https://www.anthropic.com/claude-crawler-user-agent (Claude)
+ * - https://www.perplexity.ai/help/crawler (PerplexityBot)
+ * - Real production User-Agents from logs
  */
 const BOT_PATTERNS: BotPattern[] = [
-  // === AI Crawlers (High Priority) ===
+  // === OPENAI / GPT FAMILY ===
   {
-    pattern: /GPTBot|ChatGPT-User/i,
+    pattern: /GPTBot\/1\.0/i,
     botType: "gpt",
     botName: "OpenAI GPT Bot",
     category: "ai_crawler",
     confidence: "high",
+    description: "Official OpenAI GPT crawler",
   },
   {
-    pattern: /Claude-Web|Claude-Bot|anthropic/i,
+    pattern: /GPTBot|OpenAI-Gpt/i,
+    botType: "gpt",
+    botName: "OpenAI GPT",
+    category: "ai_crawler",
+    confidence: "high",
+  },
+  {
+    pattern: /ChatGPT-User/i,
+    botType: "gpt",
+    botName: "ChatGPT Browser",
+    category: "browser_bot",
+    confidence: "high",
+    description: "ChatGPT Web Browser / Claude for Web with GPT integration",
+  },
+
+  // === ANTHROPIC / CLAUDE FAMILY ===
+  {
+    pattern: /Claude-Web/i,
+    botType: "claude",
+    botName: "Claude Web",
+    category: "browser_bot",
+    confidence: "high",
+    description: "Anthropic Claude Web browsing feature",
+  },
+  {
+    pattern: /Claude-Bot|Claude\/\d+\.\d+/i,
+    botType: "claude",
+    botName: "Claude Bot",
+    category: "ai_crawler",
+    confidence: "high",
+  },
+  {
+    pattern: /anthropic-ai|AnthropicBot|ClaudeBot/i,
     botType: "claude",
     botName: "Anthropic Claude",
     category: "ai_crawler",
     confidence: "high",
   },
+
+  // === PERPLEXITY ===
   {
-    pattern: /PerplexityBot|pplx-bot|perplexity/i,
+    pattern: /PerplexityBot\/0\.\d+|pplx-bot/i,
+    botType: "perplexity",
+    botName: "Perplexity Bot",
+    category: "ai_crawler",
+    confidence: "high",
+    description: "Perplexity.ai official crawler",
+  },
+  {
+    pattern: /PerplexityBot|Perplexity/i,
     botType: "perplexity",
     botName: "Perplexity AI",
     category: "ai_crawler",
     confidence: "high",
   },
-  {
-    pattern: /AppleBot|AppleWebKit.*\(KHTML.*Version/i,
-    botType: "apple",
-    botName: "Apple Web Crawler",
-    category: "ai_crawler",
-    confidence: "medium",
-  },
 
-  // === Search Engines ===
+  // === GOOGLE FAMILY ===
   {
-    pattern: /Googlebot|Google-Extended|Bingbot|Slurp/i,
+    pattern: /Googlebot-Extended/i,
+    botType: "google",
+    botName: "Googlebot Extended",
+    category: "ai_crawler",
+    confidence: "high",
+    description: "Google's AI-powered crawler (for SGE, Gemini)",
+  },
+  {
+    pattern: /Googlebot|Google-Tagmanager|GoogleKeywordPlanner/i,
     botType: "google",
     botName: "Googlebot",
     category: "search_engine",
     confidence: "high",
   },
+
+  // === MICROSOFT / COPILOT ===
   {
-    pattern: /bingbot|msnbot/i,
+    pattern: /Copilot|Microsoft-Copilot/i,
+    botType: "copilot",
+    botName: "Microsoft Copilot",
+    category: "ai_crawler",
+    confidence: "high",
+  },
+  {
+    pattern: /bingbot|msnbot|BingPreview/i,
     botType: "bing",
     botName: "BingBot",
     category: "search_engine",
     confidence: "high",
   },
 
-  // === Other Crawlers ===
+  // === GOOGLE GEMINI ===
   {
-    pattern: /AmazonBot|kendra\.crawler|AWS/i,
+    pattern: /gemini|Google-Gemini/i,
+    botType: "gemini",
+    botName: "Google Gemini",
+    category: "ai_crawler",
+    confidence: "high",
+  },
+
+  // === APPLE ===
+  {
+    pattern: /AppleBot|AppleWebKit.*\(KHTML.*Version.*Safari/i,
+    botType: "apple",
+    botName: "Apple Web Crawler",
+    category: "ai_crawler",
+    confidence: "medium",
+    description: "Apple's crawler for Spotlight, Siri, and Apple Intelligence",
+  },
+
+  // === AMAZON ===
+  {
+    pattern: /AmazonBot|kendra\.crawler|AWSBot/i,
     botType: "amazon",
     botName: "Amazon Crawler",
     category: "monitoring",
     confidence: "high",
   },
+
+  // === BYTEDANCE (TikTok, Douyin) ===
   {
-    pattern: /Bytedance|BytespiderBot|douyinBot|toutiaoBot/i,
+    pattern: /Bytedance|BytespiderBot|DouyinBot|ToutiaoBot/i,
     botType: "bytedance",
     botName: "ByteDance Bot",
     category: "social_crawler",
     confidence: "high",
   },
+
+  // === FACEBOOK / META ===
+  {
+    pattern: /facebookexternalhit|facebookcatalog|OGScraper|FacebookBot/i,
+    botType: "facebook",
+    botName: "Facebook Bot",
+    category: "social_crawler",
+    confidence: "high",
+  },
+
+  // === INSTAGRAM ===
+  {
+    pattern: /InstagramBot|IGramsBot/i,
+    botType: "instagram",
+    botName: "Instagram Bot",
+    category: "social_crawler",
+    confidence: "high",
+  },
+
+  // === TWITTER / X ===
+  {
+    pattern: /Twitterbot|TwitterBot|x-bot/i,
+    botType: "twitter",
+    botName: "Twitter Bot",
+    category: "social_crawler",
+    confidence: "high",
+  },
+
+  // === COMMON CRAWL ===
   {
     pattern: /CCBot|CommonCrawl/i,
     botType: "commoncrawl",
@@ -114,21 +228,15 @@ const BOT_PATTERNS: BotPattern[] = [
     category: "monitoring",
     confidence: "high",
   },
-  {
-    pattern: /facebookexternalhit|facebookcatalog/i,
-    botType: "facebook",
-    botName: "Facebook Bot",
-    category: "social_crawler",
-    confidence: "high",
-  },
 
-  // === Generic bot indicators (Low specificity, fallback) ===
+  // === GENERIC BOT INDICATORS (Low specificity, fallback) ===
   {
-    pattern: /(bot|crawler|spider|wget|curl|scrapy|libcurl|urllib|request|http|java|python)/i,
+    pattern: /(bot|crawler|spider|scraper|wget|curl|scrapy|libcurl|urllib|request|httpx|python|java|go-http-client)(?:\s|\/|$)/i,
     botType: "other",
-    botName: "Unknown Bot",
+    botName: "Generic Bot",
     category: "other",
     confidence: "low",
+    description: "Matches common bot keywords in User-Agent",
   },
 ];
 
@@ -162,7 +270,7 @@ export function detectBot(userAgent: string): BotDetectionResult {
       return {
         botType: detector.botType,
         botName: detector.botName,
-        category: detector.category as "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | null,
+        category: detector.category as "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "browser_bot" | null,
         confidence: detector.confidence,
         userAgentPattern: detector.pattern.source,
       };
@@ -216,3 +324,34 @@ export function isSearchEngine(userAgent: string): boolean {
   return result.category === "search_engine";
 }
 
+/**
+ * Check if bot is a known AI provider (high priority)
+ * Includes: OpenAI, Anthropic, Perplexity, Google, Microsoft, Apple
+ */
+export function isKnownAIProvider(userAgent: string): boolean {
+  const result = detectBot(userAgent);
+  return [
+    "gpt",
+    "claude",
+    "perplexity",
+    "google",
+    "copilot",
+    "gemini",
+    "apple",
+    "bing",
+  ].includes(result.botType as string);
+}
+
+/**
+ * Get detailed bot information for logging
+ */
+export function getBotInfo(userAgent: string) {
+  const result = detectBot(userAgent);
+  const isAI = isKnownAIProvider(userAgent);
+  
+  return {
+    ...result,
+    isAIProvider: isAI,
+    timestamp: new Date().toISOString(),
+  };
+}
