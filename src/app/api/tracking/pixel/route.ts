@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { capturePageVisit } from "@/backend/services/tracking.service";
 
-/**
- * GET /api/tracking/pixel
- * 
- * Tracking "fantôme" pour les robots et les navigateurs sans JavaScript.
- * Renvoie une image GIF transparente de 1x1 pixel.
- */
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -41,21 +37,21 @@ export async function GET(request: NextRequest) {
       path = "/";
     }
 
-    // 3. Capture de la visite en arrière-plan (Server-Side)
-    // On ne l'attend pas avec 'await' pour répondre le plus vite possible au robot
-    capturePageVisit(
+    // 3. Capture de la visite (Server-Side)
+    // On doit 'await' sinon Vercel coupe la fonction avant l'enregistrement en DB
+    await capturePageVisit(
       {
         projectId,
         eventType: "page_view",
         path: path,
         userAgent: userAgent,
         metadata: {
-          source: "pixel-noscript",
+          source: "pixel",
           referer: referer,
         },
       },
       ipAddress
-    ).catch((err) => console.error("[Pixel API] Tracking error:", err));
+    );
 
     // 4. Construction de la réponse (Image GIF 1x1 transparente)
     const pixelBase64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";

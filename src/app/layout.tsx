@@ -41,11 +41,12 @@ export default function RootLayout({
           data-project-id="6699bf7c-b3fb-4853-bdf9-54bebd316a1f"
           strategy="afterInteractive"
         />
-          <img
-            src="https://geo-tracker-teal.vercel.app/api/tracking/pixel?projectId=6699bf7c-b3fb-4853-bdf9-54bebd316a1f"
-            style={{ position: "absolute", left: "-9999px" }}
-            alt=""
-          />
+        <img
+          src={`https://geo-tracker-teal.vercel.app/api/tracking/pixel?projectId=6699bf7c-b3fb-4853-bdf9-54bebd316a1f&t=${Date.now()}`}
+          style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px" }}
+          alt=""
+          aria-hidden="true"
+        />
       </body>
     </html>
   );
