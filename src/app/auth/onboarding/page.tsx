@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation"
 import { OnboardingWizard, AuthGuardOnboarding, checkOnboardingStatus } from "@/features/onboarding"
 
+export const dynamic = 'force-dynamic'
+
 export default async function OnboardingPage() {
   // Check if user already completed onboarding
   const { needsOnboarding, error } = await checkOnboardingStatus()
