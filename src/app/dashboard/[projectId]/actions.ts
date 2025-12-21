@@ -318,7 +318,7 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
       botName: v.botName || v.isBot || 'Unknown Bot',
       path: v.path,
       createdAt: v.createdAt ? new Date(v.createdAt).toLocaleString() : '',
-      source: (v.metadata as any)?.source || 'javascript'
+      source: (v.metadata as { source?: string })?.source || 'javascript'
     })),
     keywords: keywordsData,
     searchDetails
