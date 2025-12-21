@@ -1,10 +1,10 @@
 'use server'
 
 import { db } from '@/backend/db/db'
-import { keywords, aiSearch, project } from '@/backend/db/tables/schema'
-import { eq, desc } from 'drizzle-orm'
+import { keywords, aiSearch, project, pageVisits } from '@/backend/db/tables/schema'
+import { eq, desc, isNotNull, and } from 'drizzle-orm'
 import { getDashboardAnalytics } from '@/backend/services/dashboard.service'
-import type { AiSearch, Keyword } from '@/types/db'
+import type { AiSearch, Keyword, PageVisit } from '@/types/db'
 
 export type KeywordData = {
   id: string
@@ -67,6 +67,13 @@ export type DashboardMetrics = {
     sentimentLabel: string
     createdAt: string
   }[]
+  crawlerLogs: {
+    id: string
+    botName: string
+    path: string
+    createdAt: string
+    source: string
+  }[]
   keywords: KeywordData[]
   searchDetails: SearchDetail[]
 }
@@ -76,7 +83,7 @@ export type DashboardMetrics = {
  * Fetches aiSearch and keywords directly
  */
 async function getAiMetricsData(projectId: string) {
-  const [keywordsList, aiSearchList, projectData] = await Promise.all([
+  const [keywordsList, aiSearchList, projectData, crawlerVisits] = await Promise.all([
     db.query.keywords.findMany({
       where: eq(keywords.projectId, projectId),
       orderBy: desc(keywords.createdAt)
@@ -87,10 +94,18 @@ async function getAiMetricsData(projectId: string) {
     }),
     db.query.project.findFirst({
       where: eq(project.id, projectId)
+    }),
+    db.query.pageVisits.findMany({
+      where: and(
+        eq(pageVisits.projectId, projectId),
+        isNotNull(pageVisits.isBot)
+      ),
+      orderBy: desc(pageVisits.createdAt),
+      limit: 20
     })
   ])
 
-  return { keywordsList, aiSearchList, projectUrl: projectData?.url || '' }
+  return { keywordsList, aiSearchList, projectUrl: projectData?.url || '', crawlerVisits }
 }
 
 /**
@@ -98,7 +113,7 @@ async function getAiMetricsData(projectId: string) {
  */
 export async function getDashboardDataForProject(projectId: string): Promise<DashboardMetrics> {
   // Fetch AI-specific data
-  const { keywordsList, aiSearchList, projectUrl } = await getAiMetricsData(projectId)
+  const { keywordsList, aiSearchList, projectUrl, crawlerVisits } = await getAiMetricsData(projectId)
 
   // Extract project hostname for comparison
   let projectHostname = ''
@@ -298,6 +313,13 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
     models,
     competitors,
     recentMentions,
+    crawlerLogs: crawlerVisits.map((v: PageVisit) => ({
+      id: v.id,
+      botName: v.botName || v.isBot || 'Unknown Bot',
+      path: v.path,
+      createdAt: v.createdAt ? new Date(v.createdAt).toLocaleString() : '',
+      source: (v.metadata as any)?.source || 'javascript'
+    })),
     keywords: keywordsData,
     searchDetails
   }

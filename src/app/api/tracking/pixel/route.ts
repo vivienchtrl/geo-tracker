@@ -12,12 +12,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");
 
+    // LOG DE DIAGNOSTIC
+    const userAgent = request.headers.get("user-agent") || "unknown";
+    console.log(`[PIXEL-TRACKER] Requête reçue pour le projet: ${projectId}`);
+    console.log(`[PIXEL-TRACKER] User-Agent: ${userAgent}`);
+
     if (!projectId) {
+      console.error("[PIXEL-TRACKER] Erreur: ProjectID manquant");
       return new NextResponse(null, { status: 400 });
     }
 
     // 1. Extraction des métadonnées
-    const userAgent = request.headers.get("user-agent") || "unknown";
     const referer = request.headers.get("referer") || "unknown";
     const ipAddress =
       request.headers.get("cf-connecting-ip") ||

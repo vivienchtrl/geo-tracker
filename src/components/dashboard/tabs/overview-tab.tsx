@@ -2,6 +2,7 @@ import { OverviewMetrics } from "@/components/dashboard/charts/overview-metrics"
 import { VisibilityChart } from "@/components/dashboard/charts/visibility-chart";
 import { CompetitorsChart } from "@/components/dashboard/charts/competitors-chart";
 import { RecentMentionsTable } from "@/components/dashboard/charts/recent-mentions-table";
+import { CrawlerLogsTable } from "@/components/dashboard/charts/crawler-logs-table";
 import { KeywordsTable } from "@/components/dashboard/charts/keywords-table";
 import { DashboardMetrics } from "@/app/dashboard/actions";
 
@@ -20,6 +21,12 @@ export function OverviewTab({ data }: OverviewTabProps) {
         </div>
         <div className="lg:col-span-4">
           <CompetitorsChart data={data.competitors} />
+        </div>
+      </div>
+
+      <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
+        <div className="lg:col-span-12">
+          <CrawlerLogsTable data={data.crawlerLogs} />
         </div>
       </div>
 

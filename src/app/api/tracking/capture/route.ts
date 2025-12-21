@@ -66,6 +66,10 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-client-ip") ||
       "unknown";
 
+    // LOG DE DIAGNOSTIC POUR JS CAPTURE
+    const userAgent = request.headers.get("user-agent") || "unknown";
+    console.log(`[CAPTURE-JS] Requête reçue. User-Agent: ${userAgent}`);
+
     // 3. Capture the visit (service handles validation)
     const result = await capturePageVisit(
       body as Parameters<typeof capturePageVisit>[0],
