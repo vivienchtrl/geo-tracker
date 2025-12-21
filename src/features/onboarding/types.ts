@@ -3,7 +3,7 @@
  * Defines the data structure for the complete onboarding flow
  */
 
-export type OnboardingStep = 'user' | 'project' | 'keywords' | 'location'
+export type OnboardingStep = 'user' | 'project' | 'tracker' | 'keywords' | 'location'
 
 export interface UserStepData {
   firstName: string
@@ -26,8 +26,8 @@ export interface KeywordsStepData {
 
 export interface LocationStepData {
   country: string
-  region: string
-  city: string
+  region?: string
+  city?: string
   language: string
 }
 
@@ -45,11 +45,12 @@ export interface OnboardingState {
   error: string | null
 }
 
-export const ONBOARDING_STEPS: OnboardingStep[] = ['user', 'project', 'keywords', 'location']
+export const ONBOARDING_STEPS: OnboardingStep[] = ['user', 'project', 'tracker', 'keywords', 'location']
 
 export const STEP_LABELS: Record<OnboardingStep, string> = {
   user: 'Your Profile',
   project: 'Your Website',
+  tracker: 'Connection',
   keywords: 'Keywords',
   location: 'Location',
 }

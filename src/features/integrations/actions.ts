@@ -2,6 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { deleteIntegration, getIntegrationsByProject } from "@/backend/services/integrations.service";
+import { hasTrackerSignal, getLastTrackerSignal } from "@/backend/services/tracking.service";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -77,4 +78,30 @@ export async function generateApiKey(projectId: string) {
         .where(eq(project.id, projectId));
         
     return apiKey;
+}
+
+/**
+ * Check if tracker is receiving signals for a project
+ */
+export async function checkTrackerSignalAction(projectId: string) {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { hasSignal: false, error: "Unauthorized" };
+    }
+
+    try {
+        const hasSignal = await hasTrackerSignal(projectId);
+        const lastSignal = hasSignal ? await getLastTrackerSignal(projectId) : null;
+
+        return {
+            hasSignal,
+            lastSignal: lastSignal?.toISOString() || null,
+        };
+    } catch (error) {
+        console.error("Failed to check tracker signal:", error);
+        return { hasSignal: false, error: "Failed to check tracker signal" };
+    }
 }

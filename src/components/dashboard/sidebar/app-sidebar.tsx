@@ -121,9 +121,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <Link 
               href="/dashboard"
-              className="flex items-center gap-2 p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+              className="flex items-center gap-2 p-1.5 border border-transparent hover:border-dashed hover:border-border/80 hover:bg-sidebar-accent transition-colors"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <div className="flex aspect-square size-8 items-center justify-center border border-dashed border-sidebar-primary/40 bg-sidebar-primary text-sidebar-primary-foreground">
                 <IconInnerShadowTop className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
@@ -149,7 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* Notifications */}
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-2 w-full cursor-pointer hover:bg-sidebar-accent/50 p-2 rounded-md">
+            <div className="flex items-center gap-2 w-full cursor-pointer hover:bg-sidebar-accent/50 p-2 border border-transparent hover:border-dashed hover:border-border/80">
               <div className="relative">
                 <IconBell className="size-4" />
                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
@@ -157,7 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
               </div>
-              <span className="truncate group-data-[collapsible=icon]:hidden text-sm">Notifications</span>
+              <span className="truncate group-data-[collapsible=icon]:hidden text-sm uppercase font-bold tracking-tight">Notifications</span>
               <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-1.5 group-data-[collapsible=icon]:hidden">
                 3
               </Badge>
@@ -169,8 +169,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-accent cursor-pointer">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+              <DropdownMenuTrigger className="w-full flex items-center gap-2 p-2 border border-transparent hover:border-dashed hover:border-border/80 hover:bg-sidebar-accent cursor-pointer outline-none">
+                <div className="flex aspect-square size-8 items-center justify-center border border-dashed border-border/80 bg-muted text-muted-foreground text-xs font-medium uppercase">
                   {userInitials}
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">

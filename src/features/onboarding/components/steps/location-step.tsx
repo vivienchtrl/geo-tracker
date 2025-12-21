@@ -28,8 +28,8 @@ interface LocationStepProps {
 
 const locationFormSchema = z.object({
   country: z.string().min(1, "Country is required"),
-  region: z.string().min(1, "Region is required"),
-  city: z.string().min(1, "City is required"),
+  region: z.string().optional(),
+  city: z.string().optional(),
   language: z.string().min(2, "Language is required"),
 })
 
@@ -88,27 +88,26 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 mb-4">
-          <MapPin className="h-7 w-7 text-cyan-400" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 mb-4">
+          <MapPin className="h-7 w-7 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-2xl font-bold text-foreground">
           Target location
         </h2>
-        <p className="text-zinc-400 max-w-md mx-auto">
+        <p className="text-muted-foreground max-w-md mx-auto">
           Set your target audience location for geo-specific tracking (optional)
         </p>
       </div>
 
       {/* Toggle Location */}
-      <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-900/30 border border-zinc-800">
+      <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border">
         <div className="space-y-1">
-          <p className="text-sm font-medium text-zinc-200">Enable location targeting</p>
-          <p className="text-xs text-zinc-500">Track AI search results for a specific location</p>
+          <p className="text-sm font-medium text-foreground">Enable location targeting</p>
+          <p className="text-xs text-muted-foreground">Track AI search results for a specific location</p>
         </div>
         <Switch
           checked={enableLocation}
           onCheckedChange={setEnableLocation}
-          className="data-[state=checked]:bg-cyan-600"
         />
       </div>
 
@@ -122,13 +121,12 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
                 name="country"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-zinc-300">Country</FormLabel>
+                    <FormLabel>Country</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         list="countries-list"
                         placeholder="Select or type a country"
-                        className="bg-zinc-900/50 border-zinc-800 focus:border-cyan-500/50 text-white placeholder:text-zinc-600"
                       />
                     </FormControl>
                     <datalist id="countries-list">
@@ -148,13 +146,12 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
                 name="language"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-zinc-300">Language</FormLabel>
+                    <FormLabel>Language</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         list="languages-list"
                         placeholder="Select or type a language"
-                        className="bg-zinc-900/50 border-zinc-800 focus:border-cyan-500/50 text-white placeholder:text-zinc-600"
                       />
                     </FormControl>
                     <datalist id="languages-list">
@@ -176,12 +173,12 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
                 name="region"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-zinc-300">Region / State</FormLabel>
+                    <FormLabel>Region / State (Optional)</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., California, Île-de-France" 
-                        className="bg-zinc-900/50 border-zinc-800 focus:border-cyan-500/50 text-white placeholder:text-zinc-600"
                         {...field} 
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -194,12 +191,12 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
                 name="city"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-zinc-300">City</FormLabel>
+                    <FormLabel>City (Optional)</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., San Francisco, Paris" 
-                        className="bg-zinc-900/50 border-zinc-800 focus:border-cyan-500/50 text-white placeholder:text-zinc-600"
                         {...field} 
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -208,7 +205,7 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
               />
             </div>
 
-            <FormDescription className="text-zinc-500 text-center">
+            <FormDescription className="text-center">
               This helps us simulate AI search queries from your target market
             </FormDescription>
           </form>
@@ -222,7 +219,6 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
           variant="ghost"
           onClick={onBack}
           disabled={isSubmitting}
-          className="text-zinc-400 hover:text-white hover:bg-zinc-800"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
@@ -234,7 +230,7 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
               type="button"
               onClick={handleSkip}
               disabled={isSubmitting}
-              className="bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border-0 px-8"
+              className="px-8"
             >
               {isSubmitting ? (
                 <>
@@ -255,7 +251,7 @@ export function LocationStep({ data, onComplete, onBack, isSubmitting }: Locatio
               type="submit"
               form="location-form"
               disabled={isSubmitting}
-              className="bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border-0 px-8"
+              className="px-8"
             >
               {isSubmitting ? (
                 <>

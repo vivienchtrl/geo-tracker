@@ -56,60 +56,73 @@ export function SitesKeywordsForm() {
     }
 
     return (
-        <div className="grid gap-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Add New Site</CardTitle>
-                    <CardDescription>
-                        Add a website to track rankings for.
+        <div className="grid gap-0 border border-dashed border-border/80 min-h-[400px]">
+            <Card variant="bento" className="border-0 bg-transparent px-8 py-10">
+                <CardHeader className="px-0 pb-8">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Add New Site</CardTitle>
+                    <CardDescription className="text-[9px] uppercase tracking-widest mt-1">
+                        Configure a new target website for AI tracking
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Site Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="My Awesome Blog" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="url"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>URL</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="https://example.com" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <Button type="submit" disabled={loading}>
-                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Add Site
-                            </Button>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                            <div className="grid md:grid-cols-2 gap-12">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-4">
+                                            <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Site Name</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    placeholder="MY AWESOME BLOG" 
+                                                    className="rounded-none border-dashed h-12 uppercase text-xs font-bold tracking-tight"
+                                                    {...field} 
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-[10px] uppercase font-bold" />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="url"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-4">
+                                            <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Website URL</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    placeholder="HTTPS://EXAMPLE.COM" 
+                                                    className="rounded-none border-dashed h-12 uppercase text-xs font-bold tracking-tight"
+                                                    {...field} 
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-[10px] uppercase font-bold" />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <div className="flex justify-end border-t border-dashed border-border/80 pt-8">
+                                <Button type="submit" disabled={loading} className="uppercase text-[10px] font-bold tracking-widest px-8 h-10">
+                                    {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-2 h-3.5 w-3.5" />}
+                                    Register Site
+                                </Button>
+                            </div>
                         </form>
                     </Form>
                 </CardContent>
             </Card>
 
-            {/* List of sites would go here - Mock placeholder */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Your Sites</CardTitle>
-                    <CardDescription>Manage keywords for your sites.</CardDescription>
+            <Card variant="bento" className="border-0 border-t border-dashed border-border/80 bg-muted/5 px-8 py-10">
+                <CardHeader className="px-0 pb-8">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Active Sites</CardTitle>
+                    <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Manage search parameters for your registered domains</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">No sites added yet.</p>
+                <CardContent className="px-0">
+                    <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border/60 bg-background/20">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">No sites registered in the database</p>
+                    </div>
                 </CardContent>
             </Card>
         </div>

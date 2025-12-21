@@ -21,28 +21,28 @@ export function DashboardTabs({
   gscHistory
 }: DashboardTabsProps) {
   return (
-    <Tabs defaultValue="overview" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="ai-tracking">AI Traffic</TabsTrigger>
-        <TabsTrigger value="general-traffic">General Traffic</TabsTrigger>
-      </TabsList>
+    <Tabs defaultValue="overview" className="space-y-0 flex flex-col">
+      <div className="px-8 py-4 border-b border-dashed border-border/80 bg-muted/5">
+        <TabsList className="bg-transparent border-dashed border border-border/60 p-1">
+          <TabsTrigger value="overview" className="uppercase text-[10px] tracking-widest font-bold px-8">Overview</TabsTrigger>
+          <TabsTrigger value="ai-tracking" className="uppercase text-[10px] tracking-widest font-bold px-8">AI Traffic</TabsTrigger>
+          <TabsTrigger value="general-traffic" className="uppercase text-[10px] tracking-widest font-bold px-8">General Traffic</TabsTrigger>
+        </TabsList>
+      </div>
 
-      {/* Overview Tab */}
-      <TabsContent value="overview">
+      {/* Tabs Content - Each Tab component will manage its own grid borders */}
+      <TabsContent value="overview" className="outline-none flex-1">
         <OverviewTab data={aiMetrics} />
       </TabsContent>
 
-      {/* AI Traffic Tab */}
-      <TabsContent value="ai-tracking">
+      <TabsContent value="ai-tracking" className="outline-none flex-1">
         <AITrafficTab 
           aiTraffic={aiTrafficData} 
           aiMetrics={aiMetrics} 
         />
       </TabsContent>
 
-      {/* General Traffic Tab */}
-      <TabsContent value="general-traffic">
+      <TabsContent value="general-traffic" className="outline-none flex-1">
         <GeneralTrafficTab 
           analyticsHistory={analyticsHistory}
           gscHistory={gscHistory}

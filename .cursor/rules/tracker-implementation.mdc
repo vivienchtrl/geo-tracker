@@ -1,0 +1,2051 @@
+---
+alwaysApply: true
+---
+
+# Website Tracker Implementation Guide
+
+## 📌 Overview
+
+This document provides a **step-by-step, production-ready implementation guide** for the website tracker system. The tracker captures:
+- **Bot Identification** (AI crawlers, search engines, etc.)
+- **AI Crawler Behavior & Activity** (crawl patterns, content accessed, frequency)
+- **Human Visitor Demographics** (device, OS, browser, location)
+- **Traffic Sources** (referrer, UTM parameters, classification)
+- **Geographic & Location Data** (country, city, timezone, ISP)
+
+The tracker operates in **two layers**:
+1. **Client-side**: Lightweight JavaScript tag embedded in user websites (no tracking consent required for crawlers)
+2. **Server-side**: Aggregation, analysis, and storage with strict security & performance optimization
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  CLIENT WEBSITE (User's Domain)                         │
+│  <script src="tracker.js" data-project-id="..."></script>
+│  ↓ Captures Page Visit → Detects Bot/Device/Geo        │
+└──────────────────┬──────────────────────────────────────┘
+                   │ POST /api/tracking/capture
+┌──────────────────▼──────────────────────────────────────┐
+│  GEO-TRACKER BACKEND                                    │
+│  ├─ No Auth Required (Public API)                       │
+│  ├─ Validates project ID                               │
+│  ├─ Parses User-Agent → Bot Detection                  │
+│  ├─ Geolocation Lookup (IP-based)                       │
+│  ├─ Device/Browser Detection                           │
+│  └─ Queues Raw Event → Database                        │
+└──────────────────┬──────────────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────────────┐
+│  DATABASE SCHEMA (PostgreSQL)                           │
+│                                                          │
+│  Raw Events Layer:                                      │
+│  ├─ page_visits (raw events, high-volume)              │
+│  ├─ bot_detectors (bot patterns & metadata)            │
+│                                                          │
+│  Aggregated Analytics Layer:                            │
+│  ├─ ai_crawler_logs (daily bot summaries)              │
+│  ├─ traffic_sources (daily referrer summaries)         │
+│  ├─ visitor_demographics (daily device summaries)      │
+│  └─ geographic_activity (daily geo summaries)          │
+│                                                          │
+│  Lookup Tables:                                         │
+│  └─ bot_detectors (cache bot patterns)                 │
+│                                                          │
+│  Existing Integrations:                                 │
+│  ├─ analytics_metrics (Google Analytics sync)          │
+│  └─ search_console_metrics (Google Search Console)     │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 Database Tables Design
+
+### 1. Page Visits (Raw Event Log)
+**Purpose**: Store individual page visits with complete context for debugging and real-time monitoring.
+
+**Key Design Decisions**:
+- High volume table (millions of records per month)
+- Indexed heavily for time-series queries
+- Includes hashed IP (privacy-first)
+- Stores visitor ID for session tracking
+- Metadata is JSONB for extensibility
+
+```typescript
+// src/backend/db/tables/page-visits.ts
+import { 
+  pgTable, 
+  uuid, 
+  text, 
+  timestamp, 
+  integer, 
+  jsonb, 
+  index, 
+  date,
+  boolean
+} from "drizzle-orm/pg-core";
+import { project } from "./project";
+
+export const pageVisits = pgTable("page_visits", {
+  // Primary Keys
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => project.id, { onDelete: 'cascade' })
+    .notNull(),
+  
+  // Event Classification
+  eventType: text("event_type", { 
+    enum: ["page_view", "scroll", "interaction", "form_submit"] 
+  }).notNull(),
+  
+  // Page Information
+  path: text("path").notNull(), // /products, /blog/post-1
+  title: text("title"), // Page title at time of visit
+  url: text("url"), // Full URL for debugging
+  hash: text("hash"), // URL hash/fragment
+  
+  // Referrer & Source
+  referrer: text("referrer"), // Complete referrer URL
+  referrerDomain: text("referrer_domain"), // Extracted domain from referrer
+  utmSource: text("utm_source"), // UTM tracking
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmContent: text("utm_content"),
+  utmTerm: text("utm_term"),
+  
+  // Visitor Identification
+  visitorId: text("visitor_id"), // Client-generated UUID (persisted in localStorage)
+  ipHash: text("ip_hash").notNull(), // SHA256 hash of IP + salt (privacy-first)
+  
+  // Bot Detection
+  isBot: text("is_bot"), // null = human, 'gpt' | 'claude' | 'google' | 'perplexity' | 'bing' | 'other'
+  botName: text("bot_name"), // e.g., 'GPTBot', 'ClaudeBot', 'Googlebot-Extended'
+  
+  // User Agent & Headers
+  userAgent: text("user_agent").notNull(),
+  acceptLanguage: text("accept_language"),
+  
+  // Device Information
+  deviceType: text("device_type"), // 'mobile' | 'tablet' | 'desktop' | 'bot'
+  osName: text("os_name"), // 'Windows', 'macOS', 'Linux', 'iOS', 'Android'
+  osVersion: text("os_version"),
+  browserName: text("browser_name"), // 'Chrome', 'Safari', 'Firefox'
+  browserVersion: text("browser_version"),
+  browserEngine: text("browser_engine"), // 'Blink', 'WebKit', 'Gecko'
+  
+  // Geographic Information
+  countryCode: text("country_code"), // 'US', 'FR', 'JP'
+  country: text("country"), // Full name
+  region: text("region"), // State/Province
+  city: text("city"),
+  timezone: text("timezone"), // 'America/New_York'
+  latitude: text("latitude"), // Approximate
+  longitude: text("longitude"), // Approximate
+  isProxy: boolean("is_proxy").default(false), // VPN/Proxy detected
+  isMobile: boolean("is_mobile").default(false), // Mobile connection
+  
+  // Performance Metrics
+  pageLoadTime: integer("page_load_time"), // ms (from client)
+  
+  // Custom Metadata (Extensible)
+  metadata: jsonb("metadata"), // {
+                               //   theme: 'dark',
+                               //   locale: 'en-US',
+                               //   customField: 'value'
+                               // }
+  
+  // Temporal Data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  date: date("date").notNull(), // YYYY-MM-DD for aggregations
+}, (table) => ({
+  // Composite indexes for time-series queries
+  projectCreatedAtIdx: index("page_visits_project_created_at_idx")
+    .on(table.projectId, table.createdAt),
+  
+  // Bot activity tracking
+  projectBotIdx: index("page_visits_project_bot_idx")
+    .on(table.projectId, table.isBot, table.createdAt),
+  
+  // Geographic queries
+  projectCountryIdx: index("page_visits_project_country_idx")
+    .on(table.projectId, table.countryCode, table.createdAt),
+  
+  // Device analytics
+  projectDeviceIdx: index("page_visits_project_device_idx")
+    .on(table.projectId, table.deviceType, table.createdAt),
+  
+  // Visitor session tracking
+  visitorIdIdx: index("page_visits_visitor_id_idx")
+    .on(table.visitorId),
+  
+  // Daily aggregation queries
+  projectDateIdx: index("page_visits_project_date_idx")
+    .on(table.projectId, table.date),
+}));
+```
+
+### 2. Bot Detectors (Reference Table)
+**Purpose**: Store bot detection patterns and metadata for easy reference and updates.
+
+```typescript
+// src/backend/db/tables/bot-detectors.ts
+import { pgTable, text, primaryKey, timestamp, boolean } from "drizzle-orm/pg-core";
+
+export const botDetectors = pgTable("bot_detectors", {
+  // Bot identifier (e.g., 'gpt', 'claude', 'google')
+  id: text("id").primaryKey(),
+  
+  // Display name
+  name: text("name").notNull(), // 'OpenAI GPT Bot'
+  
+  // User-Agent detection pattern (regex or substring)
+  userAgentPattern: text("user_agent_pattern").notNull(),
+  
+  // Categorization
+  category: text("category", { 
+    enum: ["ai_crawler", "search_engine", "social_crawler", "monitoring", "other"] 
+  }).notNull(),
+  
+  // Type of bot
+  isBrowser: boolean("is_browser").default(false), // AI browser (Claude Web, etc.)
+  isSearchEngine: boolean("is_search_engine").default(false),
+  
+  // Metadata
+  description: text("description"),
+  documentationUrl: text("documentation_url"),
+  respectsRobotsTxt: boolean("respects_robots_txt").default(true),
+  
+  // Maintenance
+  isActive: boolean("is_active").default(true),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+```
+
+### 3. AI Crawler Logs (Daily Aggregation)
+**Purpose**: Daily summaries of AI bot activity for dashboard display.
+
+```typescript
+// src/backend/db/tables/ai-crawler-logs.ts (Update existing table)
+import { pgTable, text, timestamp, uuid, integer, date, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { project } from "./project";
+
+export const aiCrawlerLogs = pgTable("ai_crawler_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => project.id, { onDelete: 'cascade' })
+    .notNull(),
+  date: date("date").notNull(),
+  
+  // Bot identification
+  botId: text("bot_id").notNull(), // References botDetectors.id
+  botName: text("bot_name").notNull(), // 'GPTBot', 'ClaudeBot'
+  botCategory: text("bot_category").notNull(), // 'ai_crawler', 'search_engine'
+  
+  // Volume metrics
+  requestsCount: integer("requests_count").default(0),
+  uniqueVisits: integer("unique_visits").default(0), // By visitorId
+  pagesAccessed: integer("pages_accessed").default(0), // Distinct paths
+  
+  // Behavior metrics
+  avgTimeOnPage: doublePrecision("avg_time_on_page").default(0), // seconds
+  totalCrawlDuration: integer("total_crawl_duration").default(0), // seconds
+  avgResponseTime: integer("avg_response_time").default(0), // ms
+  
+  // Access patterns
+  blockedRequests: integer("blocked_requests").default(0), // By robots.txt
+  statusCodeDistribution: text("status_code_distribution"), // {"200": 150, "403": 5}
+  
+  // Popular content
+  topPages: text("top_pages"), // JSON array of top 5 pages
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  projectDateBotUnique: uniqueIndex("ai_crawler_logs_project_date_bot_unique")
+    .on(table.projectId, table.date, table.botId),
+}));
+```
+
+### 4. Traffic Sources (Daily Aggregation)
+**Purpose**: Daily summaries of referrer and UTM traffic.
+
+```typescript
+// src/backend/db/tables/traffic-sources.ts (Update existing)
+import { pgTable, text, timestamp, uuid, integer, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { project } from "./project";
+
+export const trafficSources = pgTable("traffic_sources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => project.id, { onDelete: 'cascade' })
+    .notNull(),
+  date: date("date").notNull(),
+  
+  // Source classification
+  source: text("source").notNull(), // 'google.com', 'twitter.com', 'direct', 'unknown'
+  medium: text("medium"), // 'organic', 'referral', 'social', 'direct', 'cpc'
+  sourceType: text("source_type", { 
+    enum: ["search", "social", "referral", "direct", "email", "paid", "other"] 
+  }),
+  
+  // UTM parameters (if available)
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  
+  // Metrics
+  visits: integer("visits").default(0), // Total page views
+  visitors: integer("visitors").default(0), // Unique visitors
+  bounceRate: text("bounce_rate"), // "45.5"
+  avgSessionDuration: text("avg_session_duration"), // "02:30" format
+  conversionRate: text("conversion_rate"), // "2.3" if you track conversions
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  projectDateSourceUnique: uniqueIndex("traffic_sources_project_date_source_unique")
+    .on(table.projectId, table.date, table.source, table.medium),
+}));
+```
+
+### 5. Visitor Demographics (Daily Aggregation)
+**Purpose**: Daily summaries of device and browser information.
+
+```typescript
+// src/backend/db/tables/visitor-demographics.ts (NEW)
+import { pgTable, text, timestamp, uuid, integer, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { project } from "./project";
+
+export const visitorDemographics = pgTable("visitor_demographics", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => project.id, { onDelete: 'cascade' })
+    .notNull(),
+  date: date("date").notNull(),
+  
+  // Device Category
+  deviceType: text("device_type", { 
+    enum: ["mobile", "tablet", "desktop", "bot"] 
+  }).notNull(),
+  
+  // Operating System
+  osName: text("os_name"), // 'Windows', 'macOS', 'iOS', 'Android'
+  osVersion: text("os_version"),
+  
+  // Browser
+  browserName: text("browser_name"), // 'Chrome', 'Safari', 'Firefox'
+  browserVersion: text("browser_version"),
+  
+  // Metrics
+  visitors: integer("visitors").default(0),
+  visits: integer("visits").default(0),
+  avgSessionDuration: text("avg_session_duration"),
+  bounceRate: text("bounce_rate"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  projectDateDeviceUnique: uniqueIndex("visitor_demographics_project_date_device_unique")
+    .on(table.projectId, table.date, table.deviceType),
+  projectDateOsUnique: uniqueIndex("visitor_demographics_project_date_os_unique")
+    .on(table.projectId, table.date, table.osName),
+  projectDateBrowserUnique: uniqueIndex("visitor_demographics_project_date_browser_unique")
+    .on(table.projectId, table.date, table.browserName),
+}));
+```
+
+### 6. Geographic Activity (Daily Aggregation)
+**Purpose**: Daily geographic summaries.
+
+```typescript
+// src/backend/db/tables/geographic-activity.ts (NEW)
+import { pgTable, text, timestamp, uuid, integer, date, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { project } from "./project";
+
+export const geographicActivity = pgTable("geographic_activity", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .references(() => project.id, { onDelete: 'cascade' })
+    .notNull(),
+  date: date("date").notNull(),
+  
+  // Location
+  countryCode: text("country_code").notNull(), // 'US', 'FR', 'JP'
+  country: text("country"),
+  region: text("region"), // State/Province
+  city: text("city"),
+  
+  // Metrics
+  visitors: integer("visitors").default(0),
+  visits: integer("visits").default(0),
+  bounceRate: text("bounce_rate"),
+  avgSessionDuration: text("avg_session_duration"),
+  
+  // Geo-specific
+  isProxy: text("is_proxy_pct"), // "5.2" - percentage
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  projectDateCountryUnique: uniqueIndex("geographic_activity_project_date_country_unique")
+    .on(table.projectId, table.date, table.countryCode),
+}));
+```
+
+---
+
+## 🔍 Bot Detection Strategy
+
+### Bot Detection Patterns (Client-side + Server-side)
+
+**Key Design Principle**: Layered detection for accuracy and fallback resilience.
+
+```typescript
+// src/features/tracking/utils/bot-detector.ts
+export type BotType = 
+  | 'gpt' 
+  | 'claude' 
+  | 'google' 
+  | 'perplexity' 
+  | 'bing' 
+  | 'apple'
+  | 'amazon'
+  | 'bytedance'
+  | 'commoncrawl'
+  | 'facebook'
+  | 'other'
+  | null;
+
+export interface BotDetectionResult {
+  botType: BotType;
+  botName: string | null;
+  category: 'ai_crawler' | 'search_engine' | 'social_crawler' | 'monitoring' | null;
+  confidence: 'high' | 'medium' | 'low';
+  userAgentPattern?: string; // Matched pattern
+}
+
+/**
+ * Comprehensive bot detection patterns
+ * Ordered by specificity (most specific first)
+ */
+const BOT_PATTERNS = [
+  // AI Crawlers (High Priority)
+  {
+    pattern: /GPTBot|ChatGPT-User/i,
+    botType: 'gpt' as BotType,
+    botName: 'OpenAI GPT Bot',
+    category: 'ai_crawler' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /Claude-Web|Claude-Bot|anthropic/i,
+    botType: 'claude' as BotType,
+    botName: 'Anthropic Claude',
+    category: 'ai_crawler' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /PerplexityBot|pplx-bot/i,
+    botType: 'perplexity' as BotType,
+    botName: 'Perplexity',
+    category: 'ai_crawler' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /AppleWebKit.*Safari.*\(KHTML/i, // Apple's Web Crawler
+    botType: 'apple' as BotType,
+    botName: 'Apple Web Crawler',
+    category: 'ai_crawler' as const,
+    confidence: 'medium' as const,
+  },
+  
+  // Search Engines
+  {
+    pattern: /Googlebot|Google-Extended/i,
+    botType: 'google' as BotType,
+    botName: 'Googlebot',
+    category: 'search_engine' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /BingBot|msnbot|Slurp/i,
+    botType: 'bing' as BotType,
+    botName: 'BingBot',
+    category: 'search_engine' as const,
+    confidence: 'high' as const,
+  },
+  
+  // Other Crawlers
+  {
+    pattern: /AmazonBot|kendra/i,
+    botType: 'amazon' as BotType,
+    botName: 'Amazon Crawler',
+    category: 'monitoring' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /Bytedance|BytespiderBot/i,
+    botType: 'bytedance' as BotType,
+    botName: 'ByteDance Bot',
+    category: 'social_crawler' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /CCBot|CommonCrawl/i,
+    botType: 'commoncrawl' as BotType,
+    botName: 'Common Crawl',
+    category: 'monitoring' as const,
+    confidence: 'high' as const,
+  },
+  {
+    pattern: /facebookexternalhit/i,
+    botType: 'facebook' as BotType,
+    botName: 'Facebook Bot',
+    category: 'social_crawler' as const,
+    confidence: 'high' as const,
+  },
+  
+  // Generic bot indicators (Low specificity, fallback)
+  {
+    pattern: /(bot|crawler|spider|wget|curl|scrapy|libcurl|urllib|request|http|java|python)/i,
+    botType: 'other' as BotType,
+    botName: 'Unknown Bot',
+    category: 'monitoring' as const,
+    confidence: 'low' as const,
+  },
+];
+
+/**
+ * Detect bot from User-Agent string
+ * Returns comprehensive detection result
+ */
+export function detectBot(userAgent: string): BotDetectionResult {
+  if (!userAgent) {
+    return { botType: null, botName: null, category: null, confidence: 'low' };
+  }
+
+  // Iterate through patterns in order (most specific first)
+  for (const detector of BOT_PATTERNS) {
+    if (detector.pattern.test(userAgent)) {
+      return {
+        botType: detector.botType,
+        botName: detector.botName,
+        category: detector.category,
+        confidence: detector.confidence,
+        userAgentPattern: detector.pattern.source,
+      };
+    }
+  }
+
+  return { botType: null, botName: null, category: null, confidence: 'low' };
+}
+
+/**
+ * Check if User-Agent is a bot
+ * @returns true if bot detected (any type)
+ */
+export function isBot(userAgent: string): boolean {
+  return detectBot(userAgent).botType !== null;
+}
+
+/**
+ * Check if specific bot type
+ */
+export function isBotType(userAgent: string, type: BotType): boolean {
+  return detectBot(userAgent).botType === type;
+}
+```
+
+---
+
+## 🎯 Validators & Input Contracts
+
+### Tracking Event Validator
+
+```typescript
+// src/backend/validators/tracking.validators.ts
+import { z } from "zod";
+
+/**
+ * Schema for page visit event from client
+ * 
+ * Design Decisions:
+ * - Validate minimal required fields client-side to reduce payload size
+ * - Server adds context (IP, geolocation, device parsing)
+ * - Metadata is open schema for extensibility
+ * - URLs must be valid to prevent injection
+ */
+export const capturePageVisitSchema = z.object({
+  // Required: Project identification
+  projectId: z.string()
+    .uuid("Invalid project ID format"),
+  
+  // Required: Event type
+  eventType: z.enum(["page_view", "scroll", "interaction", "form_submit"])
+    .default("page_view"),
+  
+  // Required: Page context
+  path: z.string()
+    .min(1, "Path cannot be empty")
+    .max(2048, "Path too long"),
+  
+  title: z.string()
+    .max(512, "Page title too long")
+    .optional(),
+  
+  url: z.string()
+    .url("Invalid URL")
+    .max(2048, "URL too long")
+    .optional(),
+  
+  // Required: User-Agent (browser identification)
+  userAgent: z.string()
+    .min(1, "User-Agent required")
+    .max(1024, "User-Agent too long"),
+  
+  // Referrer information
+  referrer: z.string()
+    .url("Invalid referrer URL")
+    .optional()
+    .or(z.literal("")),
+  
+  // UTM Parameters
+  utmSource: z.string().max(256).optional(),
+  utmMedium: z.string().max(256).optional(),
+  utmCampaign: z.string().max(256).optional(),
+  utmContent: z.string().max(256).optional(),
+  utmTerm: z.string().max(256).optional(),
+  
+  // Client-side identification
+  visitorId: z.string()
+    .uuid("Invalid visitor ID format")
+    .optional(),
+  
+  // Device information (from client detection)
+  deviceType: z.enum(["mobile", "tablet", "desktop"]).optional(),
+  
+  // Accept-Language header
+  acceptLanguage: z.string().max(256).optional(),
+  
+  // Custom metadata (strict size limit to prevent abuse)
+  metadata: z.record(z.string(), z.any())
+    .refine(
+      (obj) => JSON.stringify(obj).length < 8192,
+      "Metadata too large (max 8KB)"
+    )
+    .optional(),
+  
+  // Performance metrics (from client)
+  pageLoadTime: z.number().int().positive().optional(),
+});
+
+export type CapturePageVisitInput = z.infer<typeof capturePageVisitSchema>;
+
+/**
+ * Rate limiting schema for API endpoint
+ * Prevents abuse from single IP/project
+ */
+export const rateLimitingSchema = z.object({
+  ip: z.string(),
+  projectId: z.string().uuid(),
+  timestamp: z.date(),
+  eventsInWindow: z.number().int().positive(),
+});
+
+/**
+ * Geolocation result schema
+ * Used internally, not exposed to client
+ */
+export const geolocationResultSchema = z.object({
+  countryCode: z.string().length(2),
+  country: z.string(),
+  region: z.string().optional(),
+  city: z.string().optional(),
+  timezone: z.string(),
+  latitude: z.string(),
+  longitude: z.string(),
+  isProxy: z.boolean(),
+  isMobile: z.boolean(),
+  asn: z.string().optional(),
+});
+
+export type GeolocationResult = z.infer<typeof geolocationResultSchema>;
+```
+
+---
+
+## 🛠️ Services Layer (Business Logic)
+
+### Tracking Service
+
+```typescript
+// src/backend/services/tracking.service.ts
+import { db } from "@/lib/db";
+import { pageVisits, botDetectors } from "@/backend/db/tables/schema";
+import { detectBot, type BotDetectionResult } from "@/features/tracking/utils/bot-detector";
+import { parseUserAgent } from "@/features/tracking/utils/user-agent-parser";
+import { getGeolocation } from "@/features/tracking/utils/geolocation-service";
+import { capturePageVisitSchema, type CapturePageVisitInput } from "@/backend/validators/tracking.validators";
+import { unstable_cache } from "next/cache";
+import { eq, and, gte, lt, desc } from "drizzle-orm";
+import crypto from "crypto";
+
+/**
+ * Hash IP address for privacy (one-way hash)
+ * Cannot be reversed, only used for grouping in analytics
+ * 
+ * Security:
+ * - Use environment variable SALT for additional entropy
+ * - Different salt per deployment prevents rainbow table attacks
+ * - SHA256 is collision-resistant for this use case
+ */
+function hashIp(ip: string): string {
+  const salt = process.env.IP_HASH_SALT || "default-salt";
+  return crypto
+    .createHash("sha256")
+    .update(`${ip}${salt}`)
+    .digest("hex");
+}
+
+/**
+ * Capture a single page visit
+ * 
+ * Steps:
+ * 1. Validate input schema
+ * 2. Verify project exists and is active
+ * 3. Extract IP from headers
+ * 4. Detect bot from User-Agent
+ * 5. Parse device/browser info
+ * 6. Lookup geolocation
+ * 7. Store in database
+ * 
+ * Performance:
+ * - IP geolocation is cached for 1 minute per IP
+ * - DB insert is direct (no caching) for raw events
+ * - Aggregation happens separately (cron jobs)
+ */
+export async function capturePageVisit(
+  data: CapturePageVisitInput,
+  ipAddress: string
+): Promise<{ id: string; success: boolean; message: string }> {
+  try {
+    // 1. Validate input
+    const validation = capturePageVisitSchema.safeParse(data);
+    if (!validation.success) {
+      return { 
+        id: "", 
+        success: false, 
+        message: "Invalid tracking data" 
+      };
+    }
+
+    const payload = validation.data;
+
+    // 2. Verify project exists (prevent logging for deleted projects)
+    const projectExists = await db.query.project.findFirst({
+      where: (p, { eq }) => eq(p.id, payload.projectId),
+      columns: { id: true },
+    });
+
+    if (!projectExists) {
+      return { 
+        id: "", 
+        success: false, 
+        message: "Project not found" 
+      };
+    }
+
+    // 3. Detect bot from User-Agent
+    const botDetection = detectBot(payload.userAgent);
+    
+    // 4. Parse User-Agent for device/browser info
+    const deviceInfo = parseUserAgent(payload.userAgent);
+    
+    // 5. Lookup geolocation (cached)
+    const geoInfo = await getGeolocation(ipAddress);
+
+    // 6. Extract referrer domain
+    let referrerDomain: string | null = null;
+    if (payload.referrer) {
+      try {
+        const url = new URL(payload.referrer);
+        referrerDomain = url.hostname;
+      } catch {
+        // Invalid URL, skip
+      }
+    }
+
+    // 7. Get current date for daily aggregations
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    // 8. Insert into database
+    const result = await db.insert(pageVisits).values({
+      projectId: payload.projectId,
+      eventType: payload.eventType,
+      path: payload.path,
+      title: payload.title,
+      url: payload.url,
+      referrer: payload.referrer,
+      referrerDomain,
+      utmSource: payload.utmSource,
+      utmMedium: payload.utmMedium,
+      utmCampaign: payload.utmCampaign,
+      utmContent: payload.utmContent,
+      utmTerm: payload.utmTerm,
+      visitorId: payload.visitorId,
+      ipHash: hashIp(ipAddress),
+      isBot: botDetection.botType,
+      botName: botDetection.botName,
+      userAgent: payload.userAgent,
+      acceptLanguage: payload.acceptLanguage,
+      deviceType: deviceInfo.deviceType || payload.deviceType,
+      osName: deviceInfo.osName,
+      osVersion: deviceInfo.osVersion,
+      browserName: deviceInfo.browserName,
+      browserVersion: deviceInfo.browserVersion,
+      browserEngine: deviceInfo.browserEngine,
+      countryCode: geoInfo.countryCode,
+      country: geoInfo.country,
+      region: geoInfo.region,
+      city: geoInfo.city,
+      timezone: geoInfo.timezone,
+      latitude: geoInfo.latitude,
+      longitude: geoInfo.longitude,
+      isProxy: geoInfo.isProxy,
+      isMobile: geoInfo.isMobile,
+      pageLoadTime: payload.pageLoadTime,
+      metadata: payload.metadata || {},
+      date: today,
+    }).returning({ id: pageVisits.id });
+
+    return {
+      id: result[0]?.id || "",
+      success: true,
+      message: "Visit tracked successfully",
+    };
+  } catch (error) {
+    console.error("[Tracker] Capture error:", error);
+    return {
+      id: "",
+      success: false,
+      message: "Failed to track visit",
+    };
+  }
+}
+
+/**
+ * Get recent page visits for real-time dashboard
+ * 
+ * Caching:
+ * - Cached for 60 seconds (revalidates every minute)
+ * - Invalidated via cache tag 'page-visits'
+ * - Suitable for real-time dashboard updates
+ */
+export const getRecentPageVisits = unstable_cache(
+  async (projectId: string, limit = 50, hoursBack = 24) => {
+    const cutoffTime = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+
+    return await db.query.pageVisits.findMany({
+      where: and(
+        eq(pageVisits.projectId, projectId),
+        gte(pageVisits.createdAt, cutoffTime)
+      ),
+      orderBy: desc(pageVisits.createdAt),
+      limit,
+    });
+  },
+  ['recent-page-visits'],
+  { revalidate: 60, tags: ['page-visits'] }
+);
+
+/**
+ * Get bot activity for a project
+ * 
+ * Filters page visits to show only bot activity
+ * Used for monitoring AI crawlers, search engine bots
+ */
+export const getRecentBotActivity = unstable_cache(
+  async (projectId: string, limit = 50) => {
+    return await db.query.pageVisits.findMany({
+      where: and(
+        eq(pageVisits.projectId, projectId),
+        // isBot is NOT null (any bot type)
+        pageVisits.isBot !== null
+      ),
+      orderBy: desc(pageVisits.createdAt),
+      limit,
+    });
+  },
+  ['bot-activity'],
+  { revalidate: 60, tags: ['page-visits', 'bots'] }
+);
+
+/**
+ * Get human visitor activity
+ * Filters out all bot traffic
+ */
+export const getRecentHumanActivity = unstable_cache(
+  async (projectId: string, limit = 50) => {
+    return await db.query.pageVisits.findMany({
+      where: and(
+        eq(pageVisits.projectId, projectId),
+        // isBot is null (humans only)
+        eq(pageVisits.isBot, null)
+      ),
+      orderBy: desc(pageVisits.createdAt),
+      limit,
+    });
+  },
+  ['human-activity'],
+  { revalidate: 60, tags: ['page-visits'] }
+);
+
+/**
+ * Get geographic distribution of visitors
+ * 
+ * Useful for:
+ * - World map visualization
+ * - Regional audience analysis
+ * - Localization decisions
+ */
+export const getVisitorsByCountry = unstable_cache(
+  async (projectId: string) => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    return await db
+      .select({
+        countryCode: pageVisits.countryCode,
+        country: pageVisits.country,
+        count: db.sql<number>`COUNT(*)`,
+      })
+      .from(pageVisits)
+      .where(
+        and(
+          eq(pageVisits.projectId, projectId),
+          eq(pageVisits.isBot, null), // Only humans
+          gte(pageVisits.createdAt, oneDayAgo)
+        )
+      )
+      .groupBy(pageVisits.countryCode, pageVisits.country)
+      .orderBy(desc(db.sql<number>`COUNT(*)`));
+  },
+  ['visitors-by-country'],
+  { revalidate: 300, tags: ['geography'] }
+);
+
+/**
+ * Get device breakdown
+ * Returns distribution of mobile, tablet, desktop
+ */
+export const getVisitorsByDevice = unstable_cache(
+  async (projectId: string) => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    return await db
+      .select({
+        deviceType: pageVisits.deviceType,
+        count: db.sql<number>`COUNT(*)`,
+      })
+      .from(pageVisits)
+      .where(
+        and(
+          eq(pageVisits.projectId, projectId),
+          eq(pageVisits.isBot, null),
+          gte(pageVisits.createdAt, oneDayAgo)
+        )
+      )
+      .groupBy(pageVisits.deviceType)
+      .orderBy(desc(db.sql<number>`COUNT(*)`));
+  },
+  ['visitors-by-device'],
+  { revalidate: 300, tags: ['devices'] }
+);
+```
+
+### Bot Detection Service
+
+```typescript
+// src/backend/services/bot-detection.service.ts
+import { db } from "@/lib/db";
+import { botDetectors } from "@/backend/db/tables/schema";
+import { unstable_cache } from "next/cache";
+
+/**
+ * Get all active bot detectors
+ * Used to sync patterns with client (optional optimization)
+ * 
+ * Cache: 24 hours (patterns don't change frequently)
+ */
+export const getActiveBotDetectors = unstable_cache(
+  async () => {
+    return await db.query.botDetectors.findMany({
+      where: (bd, { eq }) => eq(bd.isActive, true),
+    });
+  },
+  ['active-bot-detectors'],
+  { revalidate: 86400, tags: ['bot-detectors'] }
+);
+
+/**
+ * Get specific bot detector by ID
+ */
+export async function getBotDetector(botId: string) {
+  return await db.query.botDetectors.findFirst({
+    where: (bd, { eq }) => eq(bd.id, botId),
+  });
+}
+```
+
+---
+
+## 🔗 API Route Implementation
+
+### Tracking Capture Endpoint
+
+```typescript
+// src/app/api/tracking/capture/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { capturePageVisit } from '@/backend/services/tracking.service';
+import { capturePageVisitSchema } from '@/backend/validators/tracking.validators';
+import { db } from '@/lib/db';
+import { project } from '@/backend/db/tables/schema';
+import { eq } from 'drizzle-orm';
+
+/**
+ * POST /api/tracking/capture
+ * 
+ * Public API endpoint for website tracker
+ * 
+ * Security Measures:
+ * 1. No authentication required (public endpoint)
+ * 2. Project ID validation (must exist)
+ * 3. Input validation via Zod schemas
+ * 4. Rate limiting (via middleware or next/server)
+ * 5. Payload size limits (handled by Next.js)
+ * 6. IP hashing for privacy
+ * 7. No sensitive data stored
+ * 
+ * Performance Optimization:
+ * 1. Non-blocking: Insert and return immediately
+ * 2. Aggregation happens separately (cron jobs)
+ * 3. Indexes optimized for time-series reads
+ * 4. JSONB metadata prevents schema sprawl
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Parse JSON with error handling
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Validate input schema
+    const validation = capturePageVisitSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          // In production, don't expose internal error details to prevent reconnaissance
+          details: process.env.NODE_ENV === 'development' 
+            ? validation.error.errors 
+            : undefined,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Verify project exists and is active
+    // This prevents logging for deleted or unauthorized projects
+    const existingProject = await db.query.project.findFirst({
+      where: eq(project.id, validation.data.projectId),
+      columns: { id: true }, // Only fetch ID for optimization
+    });
+
+    if (!existingProject) {
+      // Return 200 anyway to not leak project existence info
+      // But log the attempt (security event)
+      console.warn(
+        '[Tracker] Invalid project attempt:',
+        validation.data.projectId
+      );
+      return NextResponse.json(
+        { message: 'Visit recorded' }, // Misleading response for security
+        { status: 200 }
+      );
+    }
+
+    // 4. Extract client IP
+    // Headers are ordered by priority (CDN -> reverse proxy -> direct)
+    const ipAddress = 
+      request.headers.get('cf-connecting-ip') || // Cloudflare
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      request.headers.get('x-client-ip') ||
+      'unknown';
+
+    // 5. Capture the visit
+    // This performs bot detection, geolocation, device parsing
+    const result = await capturePageVisit(validation.data, ipAddress);
+
+    // 6. Return success response
+    return NextResponse.json(
+      { 
+        success: result.success,
+        message: result.message,
+        // Optionally return visit ID for debugging in development
+        ...(process.env.NODE_ENV === 'development' && { visitId: result.id }),
+      },
+      { 
+        status: result.success ? 200 : 500,
+        headers: {
+          // Allow cross-origin requests from any domain
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          // Cache policy: don't cache API responses
+          'Cache-Control': 'no-cache, no-store, max-age=0',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('[Tracker] Endpoint error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * OPTIONS /api/tracking/capture
+ * Handle CORS preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400', // 24 hours
+    },
+  });
+}
+```
+
+---
+
+## 🔄 Daily Aggregation (Cron Jobs)
+
+### Aggregation Service
+
+```typescript
+// src/backend/services/tracking-aggregation.service.ts
+import { db } from "@/lib/db";
+import { 
+  pageVisits, 
+  aiCrawlerLogs, 
+  trafficSources,
+  visitorDemographics,
+  geographicActivity,
+} from "@/backend/db/tables/schema";
+import { and, eq, gte, lt, desc, sql } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
+
+/**
+ * Aggregate AI crawler activity for a given date
+ * 
+ * Purpose:
+ * - Reduce storage and query time by pre-aggregating raw events
+ * - Enable fast dashboard queries
+ * - Track bot behavior trends
+ * 
+ * Called by: Cron job (daily at 1 AM UTC)
+ */
+export async function aggregateAICrawlerLogs(projectId: string, date: Date) {
+  const dateStart = new Date(date);
+  dateStart.setUTCHours(0, 0, 0, 0);
+  const dateEnd = new Date(dateStart.getTime() + 86400000); // +1 day
+
+  try {
+    // 1. Query raw visits for this project+date filtered by bots
+    const botActivityByType = await db
+      .select({
+        botId: pageVisits.isBot,
+        botName: pageVisits.botName,
+        requestsCount: sql<number>`COUNT(*)`,
+        uniqueVisits: sql<number>`COUNT(DISTINCT ${pageVisits.visitorId})`,
+        pagesAccessed: sql<number>`COUNT(DISTINCT ${pageVisits.path})`,
+        avgTimeOnPage: sql<number>`AVG(EXTRACT(EPOCH FROM (${pageVisits.createdAt} - lag(${pageVisits.createdAt}) OVER (PARTITION BY ${pageVisits.isBot} ORDER BY ${pageVisits.createdAt}))))`,
+        topPages: sql<string>`json_agg(distinct ${pageVisits.path} order by count desc) FILTER (WHERE count <= 5)`,
+      })
+      .from(pageVisits)
+      .where(
+        and(
+          eq(pageVisits.projectId, projectId),
+          gte(pageVisits.createdAt, dateStart),
+          lt(pageVisits.createdAt, dateEnd),
+          pageVisits.isBot !== null // Only bots
+        )
+      )
+      .groupBy(pageVisits.isBot, pageVisits.botName);
+
+    // 2. Upsert into aiCrawlerLogs
+    for (const row of botActivityByType) {
+      if (row.botId) {
+        await db
+          .insert(aiCrawlerLogs)
+          .values({
+            projectId,
+            date: dateStart,
+            botId: row.botId,
+            botName: row.botName || row.botId,
+            botCategory: 'ai_crawler', // Refine based on bot type
+            requestsCount: row.requestsCount || 0,
+            uniqueVisits: row.uniqueVisits || 0,
+            pagesAccessed: row.pagesAccessed || 0,
+            avgTimeOnPage: row.avgTimeOnPage || 0,
+          })
+          .onConflictDoUpdate({
+            target: [aiCrawlerLogs.projectId, aiCrawlerLogs.date, aiCrawlerLogs.botId],
+            set: {
+              requestsCount: row.requestsCount || 0,
+              uniqueVisits: row.uniqueVisits || 0,
+              pagesAccessed: row.pagesAccessed || 0,
+              avgTimeOnPage: row.avgTimeOnPage || 0,
+            },
+          });
+      }
+    }
+
+    revalidateTag('ai-crawler-logs');
+  } catch (error) {
+    console.error('[Aggregation] AI crawler logs error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Aggregate traffic sources for a given date
+ */
+export async function aggregateTrafficSources(projectId: string, date: Date) {
+  const dateStart = new Date(date);
+  dateStart.setUTCHours(0, 0, 0, 0);
+  const dateEnd = new Date(dateStart.getTime() + 86400000);
+
+  try {
+    const trafficBySource = await db
+      .select({
+        source: pageVisits.referrerDomain || sql<string>`'direct'`,
+        medium: pageVisits.utmMedium || sql<string>`'organic'`,
+        visits: sql<number>`COUNT(*)`,
+        visitors: sql<number>`COUNT(DISTINCT ${pageVisits.visitorId})`,
+      })
+      .from(pageVisits)
+      .where(
+        and(
+          eq(pageVisits.projectId, projectId),
+          eq(pageVisits.isBot, null), // Only humans
+          gte(pageVisits.createdAt, dateStart),
+          lt(pageVisits.createdAt, dateEnd)
+        )
+      )
+      .groupBy(
+        pageVisits.referrerDomain,
+        pageVisits.utmMedium
+      );
+
+    for (const row of trafficBySource) {
+      await db
+        .insert(trafficSources)
+        .values({
+          projectId,
+          date: dateStart,
+          source: row.source || 'direct',
+          medium: row.medium,
+          visits: row.visits || 0,
+          visitors: row.visitors || 0,
+        })
+        .onConflictDoUpdate({
+          target: [trafficSources.projectId, trafficSources.date, trafficSources.source, trafficSources.medium],
+          set: {
+            visits: row.visits || 0,
+            visitors: row.visitors || 0,
+          },
+        });
+    }
+
+    revalidateTag('traffic-sources');
+  } catch (error) {
+    console.error('[Aggregation] Traffic sources error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Aggregate visitor demographics
+ */
+export async function aggregateVisitorDemographics(projectId: string, date: Date) {
+  const dateStart = new Date(date);
+  dateStart.setUTCHours(0, 0, 0, 0);
+  const dateEnd = new Date(dateStart.getTime() + 86400000);
+
+  try {
+    const demographicsByDevice = await db
+      .select({
+        deviceType: pageVisits.deviceType,
+        osName: pageVisits.osName,
+        browserName: pageVisits.browserName,
+        visitors: sql<number>`COUNT(DISTINCT ${pageVisits.visitorId})`,
+        visits: sql<number>`COUNT(*)`,
+      })
+      .from(pageVisits)
+      .where(
+        and(
+          eq(pageVisits.projectId, projectId),
+          eq(pageVisits.isBot, null),
+          gte(pageVisits.createdAt, dateStart),
+          lt(pageVisits.createdAt, dateEnd)
+        )
+      )
+      .groupBy(
+        pageVisits.deviceType,
+        pageVisits.osName,
+        pageVisits.browserName
+      );
+
+    for (const row of demographicsByDevice) {
+      if (row.deviceType) {
+        await db
+          .insert(visitorDemographics)
+          .values({
+            projectId,
+            date: dateStart,
+            deviceType: row.deviceType as any,
+            osName: row.osName,
+            browserName: row.browserName,
+            visitors: row.visitors || 0,
+            visits: row.visits || 0,
+          })
+          .onConflictDoUpdate({
+            target: [visitorDemographics.projectId, visitorDemographics.date, visitorDemographics.deviceType],
+            set: {
+              visitors: row.visitors || 0,
+              visits: row.visits || 0,
+            },
+          });
+      }
+    }
+
+    revalidateTag('visitor-demographics');
+  } catch (error) {
+    console.error('[Aggregation] Visitor demographics error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Aggregate geographic activity
+ */
+export async function aggregateGeographicActivity(projectId: string, date: Date) {
+  const dateStart = new Date(date);
+  dateStart.setUTCHours(0, 0, 0, 0);
+  const dateEnd = new Date(dateStart.getTime() + 86400000);
+
+  try {
+    const geoData = await db
+      .select({
+        countryCode: pageVisits.countryCode,
+        country: pageVisits.country,
+        region: pageVisits.region,
+        city: pageVisits.city,
+        visitors: sql<number>`COUNT(DISTINCT ${pageVisits.visitorId})`,
+        visits: sql<number>`COUNT(*)`,
+      })
+      .from(pageVisits)
+      .where(
+        and(
+          eq(pageVisits.projectId, projectId),
+          eq(pageVisits.isBot, null),
+          gte(pageVisits.createdAt, dateStart),
+          lt(pageVisits.createdAt, dateEnd)
+        )
+      )
+      .groupBy(
+        pageVisits.countryCode,
+        pageVisits.country,
+        pageVisits.region,
+        pageVisits.city
+      );
+
+    for (const row of geoData) {
+      if (row.countryCode) {
+        await db
+          .insert(geographicActivity)
+          .values({
+            projectId,
+            date: dateStart,
+            countryCode: row.countryCode,
+            country: row.country,
+            region: row.region,
+            city: row.city,
+            visitors: row.visitors || 0,
+            visits: row.visits || 0,
+          })
+          .onConflictDoUpdate({
+            target: [geographicActivity.projectId, geographicActivity.date, geographicActivity.countryCode],
+            set: {
+              visitors: row.visitors || 0,
+              visits: row.visits || 0,
+            },
+          });
+      }
+    }
+
+    revalidateTag('geographic-activity');
+  } catch (error) {
+    console.error('[Aggregation] Geographic activity error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Run all aggregations for a project on a given date
+ * Called by cron job daily
+ */
+export async function aggregateProjectData(projectId: string, date: Date = new Date()) {
+  console.log(`[Aggregation] Starting for project ${projectId} on ${date.toISOString()}`);
+
+  try {
+    // Run aggregations in sequence (not parallel) to avoid lock contention
+    await aggregateAICrawlerLogs(projectId, date);
+    await aggregateTrafficSources(projectId, date);
+    await aggregateVisitorDemographics(projectId, date);
+    await aggregateGeographicActivity(projectId, date);
+
+    console.log(`[Aggregation] Completed for project ${projectId}`);
+  } catch (error) {
+    console.error(`[Aggregation] Failed for project ${projectId}:`, error);
+    throw error;
+  }
+}
+```
+
+---
+
+## 🖥️ Frontend Client Integration
+
+### Client-side Tracker Script
+
+```javascript
+// public/tracker.js
+/**
+ * GEO-TRACKER JavaScript
+ * 
+ * Installation:
+ * <script src="https://your-domain.com/tracker.js" data-project-id="YOUR_PROJECT_ID"></script>
+ * 
+ * Features:
+ * - Automatic page view tracking
+ * - Device detection (mobile/tablet/desktop)
+ * - Referrer capture
+ * - UTM parameter extraction
+ * - Persistent visitor ID (localStorage)
+ * - GDPR compliant (no cookies, no PII)
+ * - Fallback support (sendBeacon + fetch)
+ * 
+ * Performance:
+ * - Non-blocking (async)
+ * - Minimal payload (~500 bytes)
+ * - No external dependencies
+ * - Efficient visitor ID persistence
+ */
+
+(function() {
+  'use strict';
+
+  // Configuration
+  const ENDPOINT = '/api/tracking/capture';
+  const TRACKING_VERSION = '1.0.0';
+  
+  // Get project ID from script tag
+  const script = document.currentScript;
+  if (!script) {
+    console.warn('Geo Tracker: Could not access current script element');
+    return;
+  }
+
+  const projectId = script.getAttribute('data-project-id');
+  if (!projectId) {
+    console.warn('Geo Tracker: Project ID missing in script tag');
+    return;
+  }
+
+  /**
+   * Generate or retrieve persistent visitor ID
+   * Stored in localStorage to track repeat visitors
+   * 
+   * Privacy Note:
+   * - Visitor ID is anonymous (random UUID)
+   * - No PII is stored
+   * - Users can clear localStorage to reset ID
+   * - Cross-domain tracking not possible (scope limited to one domain)
+   */
+  function getVisitorId() {
+    const storageKey = `_geo_tracker_vid_${projectId}`;
+    let id = localStorage.getItem(storageKey);
+    
+    if (!id) {
+      // Generate UUID v4
+      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+      
+      try {
+        localStorage.setItem(storageKey, id);
+      } catch {
+        // localStorage not available (private browsing), use session-only ID
+        console.debug('Geo Tracker: localStorage unavailable, using session visitor ID');
+      }
+    }
+    
+    return id;
+  }
+
+  /**
+   * Detect device type from User-Agent
+   * 
+   * Strategy:
+   * - Mobile: Android, iPhone, iPad, Windows Phone
+   * - Tablet: iPad, Android (with screen size detection)
+   * - Desktop: Other
+   */
+  function detectDeviceType() {
+    const ua = navigator.userAgent.toLowerCase();
+    
+    if (/iphone|ipod/.test(ua)) return 'mobile';
+    if (/ipad/.test(ua)) return 'tablet';
+    if (/android/.test(ua)) {
+      // Android: check for tablet indicators
+      if (/tablet|ipad/.test(ua)) return 'tablet';
+      return 'mobile';
+    }
+    if (/windows phone|blackberry/.test(ua)) return 'mobile';
+    
+    return 'desktop';
+  }
+
+  /**
+   * Extract UTM parameters from URL
+   */
+  function extractUtmParams() {
+    const params = {};
+    const utmFields = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+    
+    try {
+      const url = new URL(window.location.href);
+      for (const field of utmFields) {
+        const value = url.searchParams.get(field);
+        if (value) {
+          params[field] = value;
+        }
+      }
+    } catch {
+      // URL parsing failed
+    }
+    
+    return params;
+  }
+
+  /**
+   * Track page view
+   * Called on initial page load
+   * 
+   * Data sent:
+   * - Page path, title, referrer
+   * - Device type, User-Agent
+   * - Visitor ID, UTM parameters
+   * - Custom metadata
+   */
+  function trackPageView() {
+    try {
+      // Collect page data
+      const referrer = document.referrer;
+      const utmParams = extractUtmParams();
+      
+      // Build tracking payload
+      const payload = {
+        projectId,
+        eventType: 'page_view',
+        path: window.location.pathname,
+        url: window.location.href,
+        hash: window.location.hash,
+        title: document.title,
+        referrer: referrer || undefined,
+        userAgent: navigator.userAgent,
+        visitorId: getVisitorId(),
+        deviceType: detectDeviceType(),
+        acceptLanguage: navigator.language,
+        
+        // UTM parameters
+        ...(utmParams.utm_source && { utmSource: utmParams.utm_source }),
+        ...(utmParams.utm_medium && { utmMedium: utmParams.utm_medium }),
+        ...(utmParams.utm_campaign && { utmCampaign: utmParams.utm_campaign }),
+        ...(utmParams.utm_content && { utmContent: utmParams.utm_content }),
+        ...(utmParams.utm_term && { utmTerm: utmParams.utm_term }),
+        
+        // Custom metadata
+        metadata: {
+          trackerVersion: TRACKING_VERSION,
+          theme: document.documentElement.getAttribute('data-theme'),
+          locale: document.documentElement.getAttribute('lang'),
+          characterSet: document.characterSet,
+        },
+      };
+
+      // Send using sendBeacon (most reliable for page unload)
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      const sent = navigator.sendBeacon(ENDPOINT, blob);
+
+      if (!sent) {
+        // Fallback to fetch for browsers without sendBeacon support
+        fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true, // Ensure request completes even if page unloads
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        }).catch(() => {
+          // Silently fail, don't break page
+        });
+      }
+    } catch (error) {
+      // Never break page functionality
+      console.debug('Geo Tracker: Error tracking page view', error);
+    }
+  }
+
+  /**
+   * Initialize tracker on page load
+   */
+  function init() {
+    // Track page view when DOM is ready
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      trackPageView();
+    } else {
+      document.addEventListener('DOMContentLoaded', trackPageView);
+    }
+  }
+
+  // Start tracking
+  init();
+})();
+```
+
+---
+
+## 🔐 Security Best Practices
+
+### 1. Privacy & Data Protection
+
+✅ **What We DON'T store**:
+- IP addresses (only hashes)
+- Personal information (names, emails)
+- Authentication tokens
+- Credit card data
+- Passwords
+
+✅ **What We DO store**:
+- Anonymous visitor IDs
+- Page interactions
+- Bot classification
+- Device/browser info
+- Geolocation (approximate)
+- Referrer URLs
+
+✅ **Hashing & Anonymization**:
+```typescript
+// IP is hashed with salt - cannot be reversed
+const hash = crypto.createHash('sha256')
+  .update(`${ip}${process.env.IP_HASH_SALT}`)
+  .digest('hex');
+```
+
+### 2. API Security
+
+✅ **Rate Limiting** (implement middleware):
+```typescript
+// Example: 1000 requests per project per minute
+export const trackingRateLimiter = (projectId: string) => {
+  const key = `tracker:${projectId}`;
+  // Implement with Redis or similar
+};
+```
+
+✅ **Project Validation**:
+- Every request validates project exists
+- Invalid projects return 200 (don't leak info)
+- Prevents enumeration attacks
+
+✅ **CORS Settings**:
+- Allow all origins (tracking tag can be on any site)
+- Only POST method allowed
+- No credentials required
+
+### 3. Database Security
+
+✅ **RLS Policies**:
+- All tracking tables readable by project owner
+- Service role writes metrics (aggregation jobs)
+- Viewer role can read analytics
+
+✅ **Data Retention**:
+```sql
+-- Optional: Auto-delete raw events after 90 days
+ALTER TABLE page_visits 
+  ADD CONSTRAINT auto_delete 
+  CHECK (created_at > NOW() - INTERVAL '90 days');
+```
+
+### 4. Input Validation
+
+✅ **Zod Schemas**:
+```typescript
+- Max payload size: 8KB
+- Max URL length: 2048 chars
+- Enum-based event types
+- URL format validation
+```
+
+---
+
+## 📈 Performance Optimization
+
+### 1. Indexing Strategy
+
+```sql
+-- Time-series queries (critical)
+CREATE INDEX idx_page_visits_project_created_at
+  ON page_visits(project_id, created_at DESC);
+
+-- Bot filtering
+CREATE INDEX idx_page_visits_project_bot
+  ON page_visits(project_id, is_bot, created_at DESC);
+
+-- Geographic queries
+CREATE INDEX idx_page_visits_project_country
+  ON page_visits(project_id, country_code, created_at DESC);
+
+-- Visitor session tracking
+CREATE INDEX idx_page_visits_visitor_id
+  ON page_visits(visitor_id);
+```
+
+### 2. Query Optimization
+
+✅ **Aggregation prevents large queries**:
+- Raw events: High volume, short retention (90 days)
+- Aggregated data: Long retention, used for dashboard
+- Separate tables for different access patterns
+
+✅ **Caching Strategy**:
+- Real-time data: 60-second cache
+- Daily aggregates: 300-second cache
+- Bot patterns: 24-hour cache
+
+### 3. Storage Optimization
+
+✅ **JSONB Compression**:
+```typescript
+// Metadata stored as JSONB (space-efficient)
+metadata: {
+  theme: 'dark',
+  locale: 'en-US',
+}
+```
+
+✅ **Table Partitioning** (optional, for scale):
+```sql
+-- Partition by date for very high volume
+CREATE TABLE page_visits_2024_12 PARTITION OF page_visits
+  FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+```
+
+---
+
+## 🧪 Testing & Validation
+
+### Unit Test Examples
+
+```typescript
+// src/features/tracking/utils/__tests__/bot-detector.test.ts
+import { detectBot, isBot } from '../bot-detector';
+
+describe('Bot Detection', () => {
+  it('should detect GPTBot', () => {
+    const result = detectBot('Mozilla/5.0 (compatible; GPTBot/1.0)');
+    expect(result.botType).toBe('gpt');
+    expect(result.confidence).toBe('high');
+  });
+
+  it('should detect Claude Web', () => {
+    const result = detectBot('Mozilla/5.0 (compatible; Claude-Web/1.0)');
+    expect(result.botType).toBe('claude');
+  });
+
+  it('should return null for human browsers', () => {
+    const result = detectBot('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+    expect(result.botType).toBeNull();
+  });
+
+  it('should be case-insensitive', () => {
+    const result = detectBot('mozilla/5.0 (compatible; gptbot/1.0)');
+    expect(result.botType).toBe('gpt');
+  });
+});
+```
+
+### Integration Test Example
+
+```typescript
+// src/app/api/tracking/capture/__tests__/route.test.ts
+import { POST } from '../route';
+import { NextRequest } from 'next/server';
+
+describe('POST /api/tracking/capture', () => {
+  it('should track valid page visit', async () => {
+    const request = new NextRequest(new URL('http://localhost/api/tracking/capture'), {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId: 'valid-uuid',
+        eventType: 'page_view',
+        path: '/products',
+        userAgent: 'Mozilla/5.0',
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+  });
+
+  it('should reject invalid project ID', async () => {
+    const request = new NextRequest(new URL('http://localhost/api/tracking/capture'), {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId: 'invalid-id',
+        eventType: 'page_view',
+        path: '/products',
+        userAgent: 'Mozilla/5.0',
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+});
+```
+
+---
+
+## 📋 Implementation Checklist
+
+### Database Layer
+- [ ] Create migration files for new tables:
+  - [ ] `page_visits` table
+  - [ ] `bot_detectors` lookup table
+  - [ ] Update `ai_crawler_logs` schema
+  - [ ] Update `traffic_sources` schema
+  - [ ] Create `visitor_demographics` table
+  - [ ] Create `geographic_activity` table
+- [ ] Create database indexes (performance)
+- [ ] Deploy RLS policies (security)
+- [ ] Set up data retention policies (GDPR)
+
+### Type System
+- [ ] Add `PageVisit` type to `src/types/db.ts`
+- [ ] Add `BotDetectionResult` type
+- [ ] Add aggregation types
+
+### Backend Services
+- [ ] Create `src/backend/services/tracking.service.ts`
+- [ ] Create `src/backend/services/bot-detection.service.ts`
+- [ ] Create `src/backend/services/tracking-aggregation.service.ts`
+- [ ] Create `src/backend/validators/tracking.validators.ts`
+- [ ] Implement geolocation service (IP-based)
+- [ ] Implement User-Agent parser
+
+### API Routes
+- [ ] Create `src/app/api/tracking/capture/route.ts`
+- [ ] Implement CORS headers
+- [ ] Add rate limiting middleware
+- [ ] Add request logging (security events)
+
+### Client-side
+- [ ] Update `public/tracker.js` with new features
+- [ ] Test tracker.js on sample website
+- [ ] Verify sendBeacon fallback
+- [ ] Test visitor ID persistence
+
+### Cron Jobs & Background Tasks
+- [ ] Create Supabase cron function for daily aggregation
+- [ ] Schedule aggregation jobs (1 AM UTC daily)
+- [ ] Implement error notifications
+- [ ] Monitor aggregation performance
+
+### Dashboard Components
+- [ ] Create tracker metrics display component
+- [ ] Create bot activity timeline
+- [ ] Create geographic heatmap
+- [ ] Create device/browser breakdown charts
+- [ ] Create traffic source breakdown
+- [ ] Create real-time activity feed
+
+### Testing
+- [ ] Unit tests for bot detection
+- [ ] Unit tests for validators
+- [ ] Integration tests for API endpoint
+- [ ] Load testing for tracker endpoint
+- [ ] Privacy/security audit
+
+### Documentation
+- [ ] Create tracker setup guide
+- [ ] Document tracker.js parameters
+- [ ] Document analytics dashboard features
+- [ ] Create troubleshooting guide
+
+### Monitoring & Alerting
+- [ ] Set up error tracking (Sentry)
+- [ ] Monitor API endpoint performance
+- [ ] Alert on aggregation failures
+- [ ] Track storage usage growth
+- [ ] Monitor rate limiting
+
+---
+
+## 🚀 Deployment Strategy
+
+### Phase 1: Development & Testing
+1. Implement tracker.js locally
+2. Test bot detection patterns
+3. Validate aggregation logic
+4. Load test endpoint
+
+### Phase 2: Staging
+1. Deploy to staging environment
+2. Run full test suite
+3. Performance benchmark
+4. Security audit
+
+### Phase 3: Production Rollout
+1. Deploy database migrations
+2. Deploy backend services
+3. Deploy API endpoint
+4. Deploy updated tracker.js
+5. Enable for select projects (beta)
+6. Monitor error rates
+7. Gradual rollout to all projects
+
+### Phase 4: Post-Launch
+1. Monitor performance metrics
+2. Analyze aggregation accuracy
+3. Gather user feedback
+4. Optimize slow queries
+5. Scale infrastructure as needed
+
+---
+
+## 📊 Monitoring & Maintenance
+
+### Key Metrics to Track
+
+```
+1. API Endpoint Performance
+   - Response time (p50, p95, p99)
+   - Error rate (4xx, 5xx)
+   - Requests per second
+   - Payload sizes
+
+2. Database Health
+   - Page visits table size
+   - Aggregation job duration
+   - Query latencies
+   - Index hit rates
+
+3. Data Quality
+   - Bot detection accuracy
+   - Geolocation coverage
+   - Missing device info %
+   - Invalid data %
+
+4. Business Metrics
+   - Events tracked per day
+   - Projects using tracker
+   - Dashboard pageviews
+   - Data freshness lag
+```
+
+### Maintenance Tasks
+
+```
+Weekly:
+- Review error logs
+- Check aggregation completion
+- Monitor storage growth
+
+Monthly:
+- Audit bot detection patterns
+- Review geolocation accuracy
+- Optimize slow queries
+- Update bot detectors table
+
+Quarterly:
+- Full system audit
+- Security review
+- Performance optimization review
+- Data retention policy review
+```
+
+---
+
+## 🎓 Learning Resources
+
+- Bot detection best practices: [MDN User-Agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent)
+- Geolocation APIs: [GeoIP databases](https://www.maxmind.com/)
+- Next.js caching: [Next.js Documentation](https://nextjs.org/docs/app/building-your-application/caching)
+- Drizzle ORM: [Drizzle Documentation](https://orm.drizzle.team/)
+- PostgreSQL performance: [PostgreSQL Wiki](https://wiki.postgresql.org/)
+
+---
+
+## 📞 Support & Troubleshooting
+
+### Common Issues
+
+**Q: Why am I not seeing bot activity?**
+- A: Check if tracker.js is properly installed with valid project ID
+- Verify bot patterns match expected User-Agents
+- Check aggregation jobs are running
+
+**Q: Why is API slow?**
+- A: Check page_visits table size and indexes
+- Review rate limiting settings
+- Monitor geolocation service performance
+
+**Q: Why is geolocation data missing?**
+- A: Verify geolocation service integration (IP2Location, MaxMind, etc.)
+- Check for VPN/proxy IPs (may fail lookup)
+- Review service quota limits
+
+---
+
+This comprehensive guide ensures **safe, scalable, and maintainable** implementation of the tracking system.
+

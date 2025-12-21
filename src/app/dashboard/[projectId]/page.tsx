@@ -50,36 +50,41 @@ export default async function ProjectDashboardPage({ params }: ProjectDashboardP
   })
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col min-h-full">
+      {/* Header Section - Borders touch Sidebar and Edge */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-8 py-12 border-b border-dashed border-border/80 bg-muted/5">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <p className="text-muted-foreground">
-            Unified analytics for AI Engines, Google Search, and Web Traffic.
-          </p>
+          <h1 className="text-4xl font-bold tracking-tighter uppercase">{project.name}</h1>
+          <div className="flex items-center gap-3 mt-3">
+            <div className="h-px w-8 bg-primary/50" />
+            <p className="text-muted-foreground text-[10px] uppercase tracking-[0.3em]">
+              Unified Intelligence Analytics
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
+        <div className="flex items-center gap-3">
+          <Button variant="dashed" size="sm" className="uppercase text-[10px] font-bold tracking-widest px-6 h-9">
+            <Download className="mr-2 h-3.5 w-3.5" />
+            Export
           </Button>
-          <Button size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Sync Data
+          <Button size="sm" className="uppercase text-[10px] font-bold tracking-widest px-6 h-9">
+            <RefreshCw className="mr-2 h-3.5 w-3.5" />
+            Sync
           </Button>
         </div>
       </div>
 
-      {/* Dashboard Tabs - Client Component for hydration stability */}
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardTabs
-          aiMetrics={aiMetrics}
-          aiTrafficData={aiTrafficData}
-          analyticsHistory={analyticsData.analyticsHistory}
-          gscHistory={analyticsData.gscHistory}
-        />
-      </Suspense>
+      {/* Dashboard Tabs - NO Lateral Padding to let internal borders touch edges */}
+      <div className="flex-1">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardTabs
+            aiMetrics={aiMetrics}
+            aiTrafficData={aiTrafficData}
+            analyticsHistory={analyticsData.analyticsHistory}
+            gscHistory={analyticsData.gscHistory}
+          />
+        </Suspense>
+      </div>
     </div>
   )
 }

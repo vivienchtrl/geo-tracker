@@ -37,8 +37,8 @@ export const keywordsStepSchema = z.object({
 // Location step validation (optional)
 export const locationStepSchema = z.object({
   country: z.string().min(1, "Country is required"),
-  region: z.string().min(1, "Region is required"),
-  city: z.string().min(1, "City is required"),
+  region: z.string().optional(),
+  city: z.string().optional(),
   language: z.string().min(2, "Language is required"),
 }).nullable()
 

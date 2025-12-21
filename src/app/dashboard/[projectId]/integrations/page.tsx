@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { IntegrationsClient } from '@/features/integrations/components/integrations-client'
-import { getIntegrationStatusAction } from '@/features/integrations/actions'
+import { getIntegrationStatusAction, checkTrackerSignalAction } from '@/features/integrations/actions'
 import { getProjectById } from '@/backend/services/project-service'
 import { Skeleton } from "@/components/ui/skeleton"
 import { notFound } from 'next/navigation'
@@ -17,7 +17,7 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
         <p className="text-muted-foreground">
-          Connect your project to external services like Google Analytics and Search Console.
+          Connect your project to external services and install the website tracker.
         </p>
       </div>
 
@@ -33,15 +33,18 @@ async function IntegrationsContent({ projectId }: { projectId: string }) {
   const projectData = await getProjectById(projectId)
   if (!projectData) notFound()
 
-  // Get integration status
-  const status = await getIntegrationStatusAction(projectId)
+  // Get integration status and tracker signal in parallel
+  const [status, trackerSignal] = await Promise.all([
+    getIntegrationStatusAction(projectId),
+    checkTrackerSignalAction(projectId),
+  ])
 
   const fullStatus = {
     google: status.google || false,
     searchConsole: status.searchConsole || false,
     analytics: status.analytics || false,
-    tracker: !!projectData.url,
-    apiKey: projectData.url,
+    tracker: trackerSignal.hasSignal || false,
+    lastSignal: trackerSignal.lastSignal,
   }
 
   return <IntegrationsClient initialStatus={fullStatus} projectId={projectId} />

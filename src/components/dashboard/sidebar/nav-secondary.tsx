@@ -36,21 +36,21 @@ export function NavSecondary({
             return (
               <SidebarMenuItem key={item.title}>
                 {isDisabled ? (
-                  <span className="flex items-center gap-2 w-full p-2 rounded-md text-sm opacity-50 cursor-not-allowed text-sidebar-foreground">
-                    <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="flex items-center gap-3 w-full p-2 text-[10px] uppercase font-bold tracking-widest opacity-40 cursor-not-allowed text-sidebar-foreground">
+                    <item.icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{item.title}</span>
                   </span>
                 ) : (
                   <Link 
                     href={item.url}
                     className={`
-                      flex items-center gap-2 w-full p-2 rounded-md text-sm
-                      hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
-                      transition-colors
-                      ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground'}
+                      flex items-center gap-3 w-full p-2 border border-transparent transition-all
+                      hover:border-dashed hover:border-border/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
+                      text-[10px] uppercase font-bold tracking-widest
+                      ${isActive ? 'border-dashed border-primary/40 bg-primary/5 text-primary' : 'text-sidebar-foreground/70'}
                     `}
                   >
-                    <item.icon className="h-4 w-4 shrink-0" />
+                    <item.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-primary' : ''}`} />
                     <span className="truncate">{item.title}</span>
                   </Link>
                 )}

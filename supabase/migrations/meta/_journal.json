@@ -43,6 +43,13 @@
       "when": 1766254726466,
       "tag": "0005_icy_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1766336472964,
+      "tag": "0006_lazy_firebird",
+      "breakpoints": true
     }
   ]
 }

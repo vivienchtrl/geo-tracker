@@ -11,8 +11,6 @@ interface GeneralTrafficTabProps {
 }
 
 export function GeneralTrafficTab({ analyticsHistory, gscHistory }: GeneralTrafficTabProps) {
-  
-    // Format data for GA4 chart
     const analyticsChartData = analyticsHistory.map(item => ({
         date: new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         sessions: item.sessions || 0,
@@ -20,84 +18,49 @@ export function GeneralTrafficTab({ analyticsHistory, gscHistory }: GeneralTraff
     }));
 
   return (
-    <div className="space-y-4">
-      
-      {/* GA4 Section */}
-      <div className="grid gap-4 md:grid-cols-1">
-        <Card>
-            <CardHeader>
-                <CardTitle>Web Traffic (GA4)</CardTitle>
-                <CardDescription>Sessions & Users over the last 30 days</CardDescription>
+    <div className="flex flex-col gap-0 min-h-full">
+      <div className="grid gap-0 md:grid-cols-1 border-b border-dashed border-border/80">
+        <Card variant="bento" className="border-0 bg-transparent px-8 py-8">
+            <CardHeader className="px-0 pb-6">
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Web Traffic (GA4)</CardTitle>
+                <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Sessions & Users over the last 30 days</CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="h-[350px]">
+            <CardContent className="px-0">
+                <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={analyticsChartData}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
                             <XAxis 
                                 dataKey="date" 
-                                stroke="#888888" 
-                                fontSize={12} 
+                                stroke="var(--muted-foreground)" 
+                                fontSize={10} 
                                 tickLine={false} 
                                 axisLine={false} 
+                                className="uppercase tracking-widest"
                             />
                             <YAxis 
-                                stroke="#888888" 
-                                fontSize={12} 
+                                stroke="var(--muted-foreground)" 
+                                fontSize={10} 
                                 tickLine={false} 
                                 axisLine={false} 
                             />
                              <Tooltip
-                                content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                    return (
-                                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                                        Date
-                                                    </span>
-                                                    <span className="font-bold text-muted-foreground">
-                                                        {payload[0].payload.date}
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[0.70rem] uppercase text-text-primary">
-                                                        Sessions
-                                                    </span>
-                                                    <span className="font-bold text-primary">
-                                                        {payload[0].value}
-                                                    </span>
-                                                </div>
-                                                 <div className="flex flex-col">
-                                                    <span className="text-[0.70rem] uppercase text-text-primary">
-                                                        Users
-                                                    </span>
-                                                    <span className="font-bold text-blue-500">
-                                                        {payload[1].value}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                    }
-                                    return null
-                                }}
+                                contentStyle={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', borderRadius: '0px', fontSize: '10px', textTransform: 'uppercase' }}
                             />
                             <Area 
                                 type="monotone" 
                                 dataKey="sessions" 
                                 stroke="var(--primary)" 
                                 fill="var(--primary)" 
-                                fillOpacity={0.2} 
+                                fillOpacity={0.05} 
                                 strokeWidth={2}
                             />
                              <Area 
                                 type="monotone" 
                                 dataKey="users" 
-                                stroke="#3b82f6" 
-                                fill="#3b82f6" 
-                                fillOpacity={0.2} 
+                                stroke="var(--secondary)" 
+                                fill="var(--secondary)" 
+                                fillOpacity={0.05} 
                                 strokeWidth={2}
                             />
                         </AreaChart>
@@ -107,11 +70,9 @@ export function GeneralTrafficTab({ analyticsHistory, gscHistory }: GeneralTraff
         </Card>
       </div>
 
-      {/* GSC Section */}
-      <div className="grid gap-4 md:grid-cols-1">
+      <div className="border-b border-dashed border-border/80">
          <SeoPerformanceChart data={gscHistory} />
       </div>
-    
     </div>
   )
 }

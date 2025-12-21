@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Globe, Zap } from "lucide-react";
 import { Hero } from "@/components/landing-page/hero";
 import { BentoGrid } from "@/components/landing-page/bento-grid";
+import { Highlighter } from "@/components/landing-page/text-highlight";
+import { BannerBadge } from "@/components/landing-page/banner-badge";
 
 export default function Page() {
   return (
@@ -18,16 +20,19 @@ export default function Page() {
           <Hero>
             <div className="px-6 md:px-12 lg:px-24">
               <div className="flex flex-col items-center text-center space-y-8">
-                <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                  New: Track your AI indexability
-                </div>
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter max-w-3xl">
-                  Your Brand <br className="hidden md:inline" />
-                  <span className="text-primary">AI Tracker</span>
+                <BannerBadge badge="New">
+                  Track your AI indexability
+                </BannerBadge>
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter max-w-4xl mx-auto">
+                <Highlighter action="highlight" color="#2979FF" strokeWidth={3}>
+                  AI Web Tracker
+                  </Highlighter><br />
+                  Spy Your{" "}<br />
+                  <Highlighter action="underline" color="#FF9800" strokeWidth={3}>
+                     Brands and Competitors
+                  </Highlighter>{" "}
+                  {" "}
                 </h1>
-                <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
-                  Monitore your visibility on the web and find where AI is talking about you.
-                </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button size="lg" className="h-12 px-8 text-base">
                     Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />

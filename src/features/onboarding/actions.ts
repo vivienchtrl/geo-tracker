@@ -10,7 +10,8 @@ import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidateTag } from "next/cache"
-import { completeOnboardingSchema, type CompleteOnboardingInput } from "./validators"
+import { completeOnboardingSchema, type CompleteOnboardingInput, userStepSchema, projectStepSchema, keywordsStepSchema, locationStepSchema } from "./validators"
+import type { UserStepData, ProjectStepData, KeywordsStepData, LocationStepData } from "./types"
 
 interface OnboardingResult {
   success: boolean
@@ -19,8 +20,140 @@ interface OnboardingResult {
 }
 
 /**
- * Complete the onboarding process
- * Creates user profile, project, keywords, and optional ICP profile
+ * Step 1: Create user profile and project
+ */
+export async function createInitialProject(
+  userData: UserStepData,
+  projectData: ProjectStepData
+): Promise<OnboardingResult> {
+  try {
+    const cookieStore = cookies()
+    const supabase = await createClient(cookieStore)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Validate inputs
+    const userValidation = userStepSchema.safeParse(userData)
+    const projectValidation = projectStepSchema.safeParse(projectData)
+
+    if (!userValidation.success || !projectValidation.success) {
+      return { success: false, error: 'Invalid data' }
+    }
+
+    const result = await db.transaction(async (tx) => {
+      // 1. Update user profile
+      await tx.update(users)
+        .set({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id))
+
+      // 2. Create project
+      const [newProject] = await tx.insert(project).values({
+        ownerId: user.id,
+        name: projectData.projectName,
+        url: projectData.projectUrl,
+      }).returning()
+
+      if (!newProject) {
+        throw new Error('Failed to create project')
+      }
+
+      return { projectId: newProject.id }
+    })
+
+    revalidateTag('projects', 'max')
+    revalidateTag(`user-${user.id}`, 'max')
+
+    return { success: true, projectId: result.projectId }
+  } catch (error) {
+    console.error('Initial onboarding error:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to initialize project' 
+    }
+  }
+}
+
+/**
+ * Step 2: Add keywords
+ */
+export async function updateOnboardingKeywords(
+  projectId: string,
+  data: KeywordsStepData
+): Promise<OnboardingResult> {
+  try {
+    const cookieStore = cookies()
+    const supabase = await createClient(cookieStore)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    const validation = keywordsStepSchema.safeParse(data)
+    if (!validation.success) return { success: false, error: 'Invalid keywords' }
+
+    if (data.keywords.length > 0) {
+      await db.insert(keywords).values(
+        data.keywords.map(kw => ({
+          projectId,
+          term: kw.term,
+          isActive: true,
+        }))
+      )
+    }
+
+    revalidateTag('keywords', 'max')
+    return { success: true, projectId }
+  } catch (error) {
+    console.error('Update keywords error:', error)
+    return { success: false, error: 'Failed to update keywords' }
+  }
+}
+
+/**
+ * Step 3: Add location (ICP)
+ */
+export async function updateOnboardingLocation(
+  projectId: string,
+  data: LocationStepData | null
+): Promise<OnboardingResult> {
+  try {
+    const cookieStore = cookies()
+    const supabase = await createClient(cookieStore)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    if (data) {
+      const validation = locationStepSchema.safeParse(data)
+      if (!validation.success) return { success: false, error: 'Invalid location data' }
+
+      await db.insert(icpProfiles).values({
+        projectId,
+        name: 'Default Profile',
+        description: 'Created during onboarding',
+        country: data.country,
+        region: data.region || null,
+        city: data.city || null,
+        language: data.language,
+      })
+    }
+
+    revalidateTag('icp-profiles', 'max')
+    return { success: true, projectId }
+  } catch (error) {
+    console.error('Update location error:', error)
+    return { success: false, error: 'Failed to update location' }
+  }
+}
+
+/**
+ * Complete the onboarding process (Legacy wrapper or combined if needed)
  */
 export async function completeOnboarding(
   data: CompleteOnboardingInput
@@ -95,10 +228,10 @@ export async function completeOnboarding(
     })
 
     // Revalidate caches
-    revalidateTag('projects', 'page')
-    revalidateTag(`user-${user.id}`, 'page')
-    revalidateTag('keywords', 'page')
-    revalidateTag('icp-profiles', 'page'    )
+    revalidateTag('projects', 'max')
+    revalidateTag(`user-${user.id}`, 'max')
+    revalidateTag('keywords', 'max')
+    revalidateTag('icp-profiles', 'max')
 
     return { success: true, projectId: result.projectId }
 

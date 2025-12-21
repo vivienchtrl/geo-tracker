@@ -74,13 +74,13 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-4">
-          <Search className="h-7 w-7 text-amber-400" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 mb-4">
+          <Search className="h-7 w-7 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-2xl font-bold text-foreground">
           What queries matter to you?
         </h2>
-        <p className="text-zinc-400 max-w-md mx-auto">
+        <p className="text-muted-foreground max-w-md mx-auto">
           Add keywords and search queries you want to track across AI search engines
         </p>
       </div>
@@ -93,25 +93,24 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a keyword and press Enter..."
-            className="bg-zinc-900/50 border-zinc-800 focus:border-amber-500/50 text-white placeholder:text-zinc-600"
           />
           <Button
             type="button"
             onClick={() => addKeyword(inputValue)}
-            className="bg-amber-600 hover:bg-amber-500 text-white px-4"
+            className="px-4"
           >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
 
         {error && (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-destructive">{error}</p>
         )}
 
         {/* Keywords List */}
-        <div className="min-h-[120px] p-4 rounded-xl bg-zinc-900/30 border border-zinc-800">
+        <div className="min-h-[120px] p-4 rounded-xl bg-muted/30 border border-border">
           {keywords.length === 0 ? (
-            <p className="text-zinc-500 text-sm text-center py-8">
+            <p className="text-muted-foreground text-sm text-center py-8">
               No keywords added yet. Add your first keyword above.
             </p>
           ) : (
@@ -120,13 +119,13 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
                 <Badge
                   key={keyword.id}
                   variant="secondary"
-                  className="bg-amber-500/10 text-amber-300 border border-amber-500/20 pl-3 pr-1 py-1.5 text-sm"
+                  className="pl-3 pr-1 py-1.5 text-sm"
                 >
                   {keyword.term}
                   <button
                     type="button"
                     onClick={() => removeKeyword(keyword.id)}
-                    className="ml-2 p-0.5 rounded-full hover:bg-amber-500/20 transition-colors"
+                    className="ml-2 p-0.5 rounded-full hover:bg-background/20 transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -138,7 +137,7 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
 
         {/* Suggestions */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-zinc-500">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Sparkles className="h-4 w-4" />
             <span>Suggestions (click to add)</span>
           </div>
@@ -148,7 +147,7 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
                 key={suggestion}
                 type="button"
                 onClick={() => addKeyword(suggestion)}
-                className="px-3 py-1.5 text-sm rounded-lg bg-zinc-800/50 text-zinc-400 hover:bg-zinc-700/50 hover:text-zinc-300 transition-colors border border-zinc-700/50"
+                className="px-3 py-1.5 text-sm rounded-lg bg-secondary/10 text-secondary-foreground hover:bg-secondary/20 transition-colors border border-secondary/20"
               >
                 {suggestion}
               </button>
@@ -163,7 +162,6 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
           type="button"
           variant="ghost"
           onClick={onBack}
-          className="text-zinc-400 hover:text-white hover:bg-zinc-800"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
@@ -171,7 +169,7 @@ export function KeywordsStep({ data, onNext, onBack }: KeywordsStepProps) {
         <Button
           type="button"
           onClick={handleNext}
-          className="bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white border-0 px-8"
+          className="px-8"
         >
           Continue
           <ArrowRight className="ml-2 h-4 w-4" />

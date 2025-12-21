@@ -7,8 +7,8 @@ export const icpProfiles = pgTable("icp_profiles", {
     name: text("name").notNull(),
     description: text("description"),
     country: text("country").notNull(),
-    region: text("region").notNull(),
-    city: text("city").notNull(),
+    region: text("region"),
+    city: text("city"),
     language: text("language").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
 });

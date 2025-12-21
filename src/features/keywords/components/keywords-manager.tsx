@@ -104,67 +104,68 @@ export function KeywordsManager({ initialKeywords }: KeywordsManagerProps) {
     }
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Tag className="h-5 w-5" />
-                        Keywords Management
+        <div className="flex flex-col gap-0 min-h-full">
+            <Card variant="bento" className="border-0 bg-transparent px-8 py-10 border-b border-dashed border-border/80">
+                <CardHeader className="px-0 pb-8">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80 flex items-center gap-3">
+                        <Tag className="h-3.5 w-3.5" />
+                        Keywords Intake
                     </CardTitle>
-                    <CardDescription>
-                        Add keywords for AI-powered searches. Separate multiple keywords with commas or new lines.
+                    <CardDescription className="text-[9px] uppercase tracking-widest mt-1">
+                        Register keywords for AI-powered monitoring and intelligence collection
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
                             <FormField
                                 control={form.control}
                                 name="keywords"
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {editingKeyword ? "Edit Keywords" : "Add Keywords"}
+                                    <FormItem className="space-y-4">
+                                        <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                                            {editingKeyword ? "Modify Existing Parameters" : "Input Vector Terms"}
                                         </FormLabel>
                                         <FormControl>
                                             <Textarea
-                                                placeholder="Enter keywords separated by commas or new lines...
-Example: SEO tools, marketing automation, content management"
-                                                className="min-h-[100px] resize-none"
+                                                placeholder="ENTER KEYWORDS SEPARATED BY COMMAS OR NEW LINES...
+EXAMPLE: SEO TOOLS, MARKETING AUTOMATION, CONTENT MANAGEMENT"
+                                                className="min-h-[120px] rounded-none border-dashed uppercase text-xs font-bold tracking-tight leading-relaxed"
                                                 {...field}
                                             />
                                         </FormControl>
-                                        <FormDescription>
-                                            Keywords will be automatically parsed and deduplicated.
+                                        <FormDescription className="text-[9px] uppercase tracking-widest text-muted-foreground/60">
+                                            Terms will be automatically normalized and deduplicated in the system.
                                             {field.value && (
-                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                <div className="mt-4 flex flex-wrap gap-2">
                                                     {parseKeywords(field.value).map((tag, index) => (
-                                                        <Badge key={index} variant="secondary" className="text-xs">
+                                                        <Badge key={index} variant="outline" className="text-[8px] h-4 uppercase font-black border-dashed border-primary/40 text-primary bg-primary/5">
                                                             {tag}
                                                         </Badge>
                                                     ))}
                                                 </div>
                                             )}
                                         </FormDescription>
-                                        <FormMessage />
+                                        <FormMessage className="text-[10px] uppercase font-bold" />
                                     </FormItem>
                                 )}
                             />
-                            <div className="flex gap-2">
-                                <Button type="submit" disabled={loading}>
-                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {editingKeyword ? "Update Keywords" : "Add Keywords"}
+                            <div className="flex gap-4 border-t border-dashed border-border/80 pt-8">
+                                <Button type="submit" disabled={loading} className="uppercase text-[10px] font-bold tracking-widest px-8 h-10">
+                                    {loading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                                    {editingKeyword ? "Sync Changes" : "Commit Keywords"}
                                 </Button>
                                 {editingKeyword && (
                                     <Button
                                         type="button"
-                                        variant="outline"
+                                        variant="dashed"
+                                        className="uppercase text-[10px] font-bold tracking-widest px-8 h-10"
                                         onClick={() => {
                                             setEditingKeyword(null)
                                             form.reset()
                                         }}
                                     >
-                                        Cancel
+                                        Abort
                                     </Button>
                                 )}
                             </div>
@@ -173,60 +174,64 @@ Example: SEO tools, marketing automation, content management"
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Your Keywords</CardTitle>
-                    <CardDescription>
-                        Manage your keywords for AI searches ({initialKeywords.length} total)
+            <Card variant="bento" className="border-0 bg-transparent px-8 py-10">
+                <CardHeader className="px-0 pb-8">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Active Terminology Registry</CardTitle>
+                    <CardDescription className="text-[9px] uppercase tracking-widest mt-1">
+                        Currently monitoring {initialKeywords.length} term(s) across global AI networks
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                     {initialKeywords.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No keywords added yet.</p>
+                        <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border/60 bg-muted/5">
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Registry is currently empty</p>
+                        </div>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="grid gap-0 border border-dashed border-border/60">
                             {initialKeywords.map((keyword) => (
                                 <div
                                     key={keyword.id}
-                                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                                    className="flex items-center justify-between p-6 border-b border-dashed border-border/60 last:border-b-0 hover:bg-primary/5 transition-all group/row bg-background/20"
                                 >
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex items-center gap-3 mb-3">
                                             <Badge
                                                 variant={keyword.isActive ? "default" : "secondary"}
-                                                className="text-xs"
+                                                className="text-[8px] h-4 uppercase font-black tracking-widest"
                                             >
-                                                {keyword.isActive ? "Active" : "Inactive"}
+                                                {keyword.isActive ? "Online" : "Paused"}
                                             </Badge>
                                             {keyword.ranking !== null && (
-                                                <Badge variant="outline" className="text-xs">
-                                                    Rank: {keyword.ranking}
+                                                <Badge variant="outline" className="text-[8px] h-4 uppercase font-black tracking-widest border-dashed border-primary/40 text-primary">
+                                                    Rank: #{keyword.ranking}
                                                 </Badge>
                                             )}
                                         </div>
-                                        <div className="flex flex-wrap gap-1">
+                                        <div className="flex flex-wrap gap-2">
                                             {keyword.tags?.map((tag, index) => (
-                                                <Badge key={index} variant="outline" className="text-xs">
+                                                <Badge key={index} variant="outline" className="text-[9px] h-5 px-2 uppercase font-bold tracking-tight border-dashed border-border/80 bg-background/50">
                                                     {tag}
                                                 </Badge>
                                             )) || (
-                                                <Badge variant="outline" className="text-xs">
+                                                <Badge variant="outline" className="text-[9px] h-5 px-2 uppercase font-bold tracking-tight border-dashed border-border/80 bg-background/50">
                                                     {keyword.term}
                                                 </Badge>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 ml-4">
+                                    <div className="flex items-center gap-3 ml-6">
                                         <Button
                                             size="sm"
-                                            variant="outline"
+                                            variant="dashed"
+                                            className="h-8 text-[9px] uppercase font-black tracking-tighter px-3"
                                             onClick={() => toggleKeywordStatus(keyword)}
                                         >
                                             {keyword.isActive ? "Deactivate" : "Activate"}
                                         </Button>
                                         <Button
                                             size="sm"
-                                            variant="outline"
+                                            variant="dashed"
+                                            className="h-8 text-[9px] uppercase font-black tracking-tighter px-3"
                                             onClick={() => handleEdit(keyword)}
                                         >
                                             Edit
@@ -235,9 +240,9 @@ Example: SEO tools, marketing automation, content management"
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => handleDelete(keyword.id)}
-                                            className="text-destructive hover:text-destructive"
+                                            className="h-8 w-8 text-destructive/40 hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-dashed hover:border-destructive/40"
                                         >
-                                            <X className="h-4 w-4" />
+                                            <X className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>

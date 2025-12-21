@@ -48,27 +48,27 @@ export function SourceDistributionChart() {
   }, []);
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Top Cited Sources</CardTitle>
-        <CardDescription>Distribution of content types cited by AI</CardDescription>
+    <Card variant="bento" className="flex flex-col border-0 bg-transparent px-8 py-8 h-full">
+      <CardHeader className="px-0 pb-6 items-center">
+        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Top Cited Sources</CardTitle>
+        <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Distribution of content types cited by AI</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
+      <CardContent className="flex-1 px-0 pb-0 flex items-center justify-center">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
+          className="mx-auto aspect-square w-full max-w-[280px]"
         >
           <PieChart>
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel />}
+              content={<ChartTooltipContent hideLabel className="rounded-none border-dashed" />}
             />
             <Pie
               data={sourceData}
               dataKey="count"
               nameKey="source"
-              innerRadius={60}
-              strokeWidth={5}
+              innerRadius={70}
+              strokeWidth={0}
             >
               <Label
                 content={({ viewBox }) => {
@@ -83,16 +83,16 @@ export function SourceDistributionChart() {
                         <tspan
                           x={viewBox.cx}
                           y={viewBox.cy}
-                          className="fill-foreground text-3xl font-bold"
+                          className="fill-foreground text-4xl font-black tracking-tighter"
                         >
                           {totalCitations.toLocaleString()}
                         </tspan>
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 24}
-                          className="fill-muted-foreground text-xs"
+                          className="fill-muted-foreground text-[10px] uppercase font-bold tracking-[0.2em]"
                         >
-                          Citations
+                          CITATIONS
                         </tspan>
                       </text>
                     );

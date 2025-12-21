@@ -11,24 +11,25 @@ interface OverviewTabProps {
 
 export function OverviewTab({ data }: OverviewTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-0 min-h-full">
       <OverviewMetrics data={data.overview} />
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="col-span-4">
+      <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
+        <div className="lg:col-span-8 border-r border-dashed border-border/80">
           <VisibilityChart data={data.models} />
         </div>
-        <div className="col-span-3">
+        <div className="lg:col-span-4">
           <CompetitorsChart data={data.competitors} />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1">
-         <KeywordsTable data={data.keywords} />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-1">
-        <RecentMentionsTable data={data.searchDetails} />
+      <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
+        <div className="lg:col-span-5 border-r border-dashed border-border/80">
+          <KeywordsTable data={data.keywords} />
+        </div>
+        <div className="lg:col-span-7">
+          <RecentMentionsTable data={data.searchDetails} />
+        </div>
       </div>
     </div>
   );

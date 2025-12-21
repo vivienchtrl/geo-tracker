@@ -10,3 +10,8 @@ export * from "./analytics-metrics";
 export * from "./search-console-metrics";
 export * from "./ai-crawler-logs";
 export * from "./traffic-sources";
+// Tracker tables
+export * from "./page-visits";
+export * from "./bot-detectors";
+export * from "./visitor-demographics";
+export * from "./geographic-activity";
