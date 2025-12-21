@@ -47,7 +47,10 @@ export function IntegrationsClient({
   const [copied, setCopied] = useState(false);
 
   // Generate tracker script snippet
-  const trackerSnippet = `<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/tracker.js" data-project-id="${projectId}" async defer></script>`;
+  const trackerSnippet = `<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/tracker.js" data-project-id="${projectId}" async defer></script>
+<noscript>
+  <img src="${typeof window !== 'undefined' ? window.location.origin : ''}/api/tracking/pixel?projectId=${projectId}" style="position:absolute; left:-9999px;" alt="" />
+</noscript>`;
 
   const handleConnectGoogle = () => {
     window.location.href = `/api/auth/google/connect?projectId=${projectId}`;
