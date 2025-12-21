@@ -1,15 +1,16 @@
 import { LandingContainer } from "@/components/landing-page/container";
 import { LandingSection } from "@/components/landing-page/section";
+import { Navbar } from "@/components/navigation/navbar";
+import { Footer } from "@/components/navigation/footer";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Globe, Zap } from "lucide-react";
-import Link from "next/link";
 import { Hero } from "@/components/landing-page/hero";
 import { BentoGrid } from "@/components/landing-page/bento-grid";
 
 export default function Page() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header/Nav would go here, possibly inside the container or fixed */}
+      <Navbar />
 
       {/* Hero Section */}
       <LandingSection>
@@ -118,24 +119,7 @@ export default function Page() {
         </LandingContainer>
       </LandingSection>
 
-      <div className="border-t border-dashed border-border/40 py-8 text-center text-sm text-muted-foreground">
-        <LandingContainer className="border-none py-0">
-          <div className="flex flex-col md:flex-row justify-between items-center px-6">
-            <p>© 2024 GeoTracker. All rights reserved.</p>
-            <div className="flex gap-4 mt-4 md:mt-0">
-              <Link href="#" className="hover:text-foreground">
-                Privacy
-              </Link>
-              <Link href="#" className="hover:text-foreground">
-                Terms
-              </Link>
-              <Link href="#" className="hover:text-foreground">
-                Twitter
-              </Link>
-            </div>
-          </div>
-        </LandingContainer>
-      </div>
+      <Footer />
     </div>
   );
 }

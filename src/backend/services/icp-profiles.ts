@@ -1,5 +1,5 @@
-import { db } from "@/lib/db"
-import { icpProfiles } from "@/backend/db/schema"
+import { db } from "@/backend/db/db"
+import { icpProfiles } from "@/backend/db/tables/icp-profile"
 import { eq, desc } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 

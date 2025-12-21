@@ -2,11 +2,11 @@
 
 import { revalidateTag } from "next/cache";
 import { deleteIntegration, getIntegrationsByProject } from "@/backend/services/integrations.service";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { project } from "@/backend/db/schema";
+import { db } from "@/backend/db/db";
+import { project } from "@/backend/db/tables/project";
 import { eq } from "drizzle-orm";
 
 export async function getIntegrationStatusAction(projectId: string) {

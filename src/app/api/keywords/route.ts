@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { keywords } from '@/backend/db/schema';
+import { db } from '@/backend/db/db';
+import { keywords } from '@/backend/db/tables/keywords';
 import { insertKeywordSchema } from '@/lib/validators';
 import { eq } from 'drizzle-orm';
 

@@ -2,23 +2,38 @@
 
 import { createContext, useContext } from 'react'
 import type { Project } from '@/types/db'
+import type { ProjectRole } from '@/backend/services/project-service'
 
 type ProjectContextType = {
-  project: Project | null
+  project: Project
+  role: ProjectRole
   isLoading: boolean
 }
 
 const ProjectContext = createContext<ProjectContextType | null>(null)
 
+interface ProjectProviderProps {
+  children: React.ReactNode
+  project: Project
+  role: ProjectRole
+}
+
+/**
+ * Provides the CURRENT project context.
+ * Used within /dashboard/[projectId]/* routes.
+ * For the list of all user projects, use UserProjectsProvider.
+ */
 export function ProjectProvider({ 
   children, 
-  project 
-}: { 
-  children: React.ReactNode
-  project: Project | null 
-}) {
+  project,
+  role
+}: ProjectProviderProps) {
   return (
-    <ProjectContext.Provider value={{ project, isLoading: false }}>
+    <ProjectContext.Provider value={{ 
+      project, 
+      role,
+      isLoading: false 
+    }}>
       {children}
     </ProjectContext.Provider>
   )

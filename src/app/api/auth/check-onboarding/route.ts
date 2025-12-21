@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkOnboardingStatus } from "@/app/auth/onboarding/actions";
+import { checkOnboardingStatus } from "@/features/onboarding/actions";
 
 export async function GET() {
   try {

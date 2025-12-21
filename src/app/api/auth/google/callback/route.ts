@@ -3,8 +3,8 @@ import { oauth2Client } from "@/lib/google-oauth";
 import { createOrUpdateIntegration } from "@/backend/services/integrations.service";
 import { revalidateTag } from "next/cache";
 import { google } from "googleapis";
-import { db } from "@/lib/db";
-import { project } from "@/backend/db/schema";
+import { db } from "@/backend/db/db";
+import { project } from "@/backend/db/tables/project";
 import { eq } from "drizzle-orm";
 
 // Helper pour normaliser les URLs (retirer https, www, slashes, et prefixe sc-domain) pour la comparaison

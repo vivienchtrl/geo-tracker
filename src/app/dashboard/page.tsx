@@ -1,133 +1,105 @@
-import { Suspense } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, Download } from "lucide-react";
-
-// Components
-import { OverviewTab } from "@/components/dashboard/tabs/overview-tab";
-import { AITrafficTab } from "@/components/dashboard/tabs/ai-traffic-tab";
-import { GeneralTrafficTab } from "@/components/dashboard/tabs/general-traffic-tab";
-
-// Data
-import { getDashboardData } from "./actions";
-import { getDashboardAnalytics, getDashboardContext } from "@/backend/services/dashboard.service";
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { TrafficSource } from "@/types/db";
-
-// Constants for AI Source Filtering
-const AI_SOURCES = [
-  'chatgpt', 'openai', 
-  'perplexity', 
-  'google', // "AI overview of Google" - this might be tricky to distinguish from Search without specific 'medium' or 'source' details, assuming 'google' source with specific characteristics or just broad google for now if vague. 
-            // However, usually "Google" is search. If the user means "SGE" / "AI Overviews", it might not be explicitly separated in standard referrer data yet.
-            // For now, I will include 'google' only if the user explicitly wanted it, but typically 'google' is organic search.
-            // The user said "AI overview of Google". If we don't have specific SGE tracking, we might settle for including 'google' traffic here OR just strictly known AI bots.
-            // Let's stick to the high-confidence AI ones + 'google' (if requested, but 'google' is huge). 
-            // Let's look at the implementation: filtering `traffic_sources`. 
-            // If I include 'google', it will dwarf everything. I will include it if the source string contains 'ai' or is one of the specific ones. 
-            // ACTUALLY, the user list was: "ChatGPT, Perplexity, AI overview of Google, Gemini, DeepSeek, Mistral, Claude".
-            // I will try to match these strings in the source.
-  'gemini', 'bard',
-  'deepseek',
-  'mistral',
-  'claude', 'anthropic',
-  'bing' // Bing Chat
-];
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '@/backend/services/user-service'
+import { getUserProjects } from '@/backend/services/project-service'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Plus, Folder, Globe, Users, ArrowRight } from 'lucide-react'
 
 export default async function DashboardPage() {
-  const supabase = await createClient(cookies());
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser()
+  if (!user) redirect('/auth/sign-in')
 
-  if (!user) {
-    redirect("/auth/sign-in");
+  const projects = await getUserProjects(user.id)
+
+  // If user has only one project, redirect directly to it
+  if (projects.length === 1) {
+    redirect(`/dashboard/${projects[0].project.id}`)
   }
 
-  // 1. Fetch Context (User & Project)
-  const context = await getDashboardContext(user.id);
-  
-  if (!context) {
-    // Handle case where user has no project (redirect to onboarding)
-    redirect("/auth/onboarding");
+  // If user has no projects, redirect to onboarding
+  if (projects.length === 0) {
+    redirect('/auth/onboarding')
   }
-
-  // 2. Fetch Data in Parallel
-  const [aiMetrics, analyticsData] = await Promise.all([
-    getDashboardData(), // Existing AI/SEO Action (Mentions, Competitors, Keywords)
-    getDashboardAnalytics(context.project.id) // Analytics Service (GA4, GSC, Traffic Sources)
-  ]);
-
-  // 3. Filter Traffic for AI Tab
-  // Naive filter: check if source string contains any of the known AI identifiers
-  const aiTrafficData: TrafficSource[] = analyticsData.trafficSources.filter(ts => {
-      const source = ts.source.toLowerCase();
-      // Special handling for Google: Only count if it explicitly looks like AI (which is hard today) 
-      // or if the user explicitly considers 'google' as a potential AI source.
-      // Given the user request "AI overview of Google", standard 'google' referrers are usually Organic Search.
-      // SGE doesn't have a distinct referrer yet. 
-      // I'll check for 'google' AND some indication, otherwise strict match on others.
-      // For now, let's include 'google' if it is requested, but maybe separate it or note it.
-      // To be safe and useful: I will exclude generic 'google' to avoid polluting AI stats with SEO, 
-      // UNLESS 'google' is combined with 'ai' or 'sge' or something.
-      // But looking at the user list again: "AI overview of Google".
-      // Let's strictly match known AI names.
-      return AI_SOURCES.some(ai => {
-          if (ai === 'google') return false; // Skip generic google here to avoid noise, unless we have specific 'google ai' source
-          return source.includes(ai);
-      });
-  });
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Geo AEO Tracking</h2>
-          <p className="text-muted-foreground">
-            Unified analytics for AI Engines, Google Search, and Web Traffic.
+          <h1 className="text-3xl font-bold tracking-tight">Your Projects</h1>
+          <p className="text-muted-foreground mt-1">
+            Select a project to view its dashboard and analytics
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
+        <Button variant="outline">
+          <Link href="/dashboard/projects/new">
+            <Plus className="mr-2 h-4 w-4" />
+              New Project
+            </Link>
           </Button>
-          <Button>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Sync Data
-          </Button>
-        </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="ai-tracking">AI Traffic</TabsTrigger>
-          <TabsTrigger value="general-traffic">General Traffic</TabsTrigger>
-        </TabsList>
+      {/* Projects Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {projects.map(({ project, role }) => (
+          <Link 
+            key={project.id} 
+            href={`/dashboard/${project.id}`}
+            className="group"
+          >
+            <Card className="h-full transition-all duration-200 hover:border-primary/50 hover:shadow-md group-hover:bg-muted/30">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Folder className="h-5 w-5" />
+                  </div>
+                  <Badge 
+                    variant={role === 'owner' ? 'default' : 'secondary'}
+                    className="text-xs"
+                  >
+                    {role}
+                  </Badge>
+                </div>
+                <CardTitle className="mt-3 text-lg">{project.name}</CardTitle>
+                <CardDescription className="line-clamp-1">
+                  <Globe className="mr-1 inline h-3 w-3" />
+                  {project.url}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {role === 'owner' ? 'Owner' : 'Member'}
+                  </span>
+                  <span className="flex items-center gap-1 text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                    Open
+                    <ArrowRight className="h-3 w-3" />
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
 
-        {/* --- OVERVIEW TAB --- */}
-        <TabsContent value="overview">
-           <OverviewTab data={aiMetrics} />
-        </TabsContent>
-
-        {/* --- AI TRAFFIC TAB --- */}
-        <TabsContent value="ai-tracking">
-            <AITrafficTab 
-                aiTraffic={aiTrafficData} 
-                aiMetrics={aiMetrics} 
-            />
-        </TabsContent>
-
-        {/* --- GENERAL TRAFFIC TAB --- */}
-        <TabsContent value="general-traffic">
-            <GeneralTrafficTab 
-                analyticsHistory={analyticsData.analyticsHistory}
-                gscHistory={analyticsData.gscHistory}
-            />
-        </TabsContent>
-
-      </Tabs>
+      {/* Quick Stats / Welcome Section */}
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="mb-4 rounded-full bg-muted p-3">
+            <Folder className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium">
+            {projects.length} Project{projects.length > 1 ? 's' : ''} Available
+          </h3>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Select a project above to view its analytics, manage keywords, 
+            configure integrations, and track AI traffic.
+          </p>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

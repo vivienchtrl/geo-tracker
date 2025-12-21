@@ -20,9 +20,8 @@ export interface Keyword {
   term: string
   project_id: number
   is_active: boolean
-  project: Project
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  projects?: any 
+  project?: Project
+  projects?: Project[] 
 }
 
 export async function getActiveKeywords(supabase: SupabaseClient): Promise<Keyword[]> {
@@ -38,8 +37,7 @@ export async function getActiveKeywords(supabase: SupabaseClient): Promise<Keywo
 
   // Normalisation des données pour le reste du script
   // Si Supabase renvoie 'projects' (objet ou tableau), on le mappe vers une propriété standard 'project'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (keywords as any[]).map(kw => ({
+  return (keywords as Keyword[]).map((kw: Keyword) => ({
     ...kw,
     project: Array.isArray(kw.projects) ? kw.projects[0] : kw.projects
   }))

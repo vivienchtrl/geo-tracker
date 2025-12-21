@@ -76,7 +76,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
               })
 
               // Analyze Sentiment
-              const analysisData = await analyzeSentiment(openai, responseText, kw.project.name)
+              const analysisData = await analyzeSentiment(openai, responseText, kw.project?.name || 'Unknown Project')
 
               // Ensure project_id is included
               const scan = await saveScanResult(supabase, {

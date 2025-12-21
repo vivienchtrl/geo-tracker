@@ -42,8 +42,16 @@ The project follows a **Feature-Based Module** architecture. Each major domain o
 src/
 ├── app/                  # Next.js App Router (Routing Layer ONLY)
 │   ├── dashboard/        # Protected Application Routes
-│   │   ├── page.tsx      # Server Component (Fetches Data)
-│   │   └── layout.tsx    # Server Layout (App Shell)
+│   │   ├── layout.tsx    # Root layout (Auth + User + ProjectList)
+│   │   ├── page.tsx      # Project Hub (selection page)
+│   │   ├── providers.tsx # Client providers wrapper
+│   │   ├── account/      # User account settings
+│   │   ├── projects/new/ # Create new project
+│   │   └── [projectId]/  # Project-scoped routes
+│   │       ├── layout.tsx      # Project access validation + ProjectProvider
+│   │       ├── page.tsx        # Project dashboard (analytics)
+│   │       ├── settings/       # Project settings (tabs: General, Keywords, ICP, Team, Billing)
+│   │       └── integrations/   # Google integrations
 │   ├── api/              # API Routes (Edge Cases only)
 │   └── (marketing)/      # Public Marketing Pages
 │

@@ -1,7 +1,7 @@
-import { db } from "@/lib/db"
-import { users } from "@/backend/db/schema"
+import { db } from "@/backend/db/db"
+import { users } from "@/backend/db/tables/user"
 import { eq } from "drizzle-orm"
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { cache } from "react"
 

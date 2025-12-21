@@ -1,10 +1,10 @@
 'use server'
 
-import { db } from "@/lib/db"
-import { project } from "@/backend/db/schema"
+import { db } from "@/backend/db/db"
+import { project } from "@/backend/db/tables/project"
 import { eq } from "drizzle-orm"
 import { revalidateTag } from "next/cache"
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { updateProjectSchema } from "@/backend/validators/project.validators"
 

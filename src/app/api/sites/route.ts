@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { project } from '@/backend/db/schema';
+import { db } from '@/backend/db/db';
+import { project } from '@/backend/db/tables/project';
 import { insertProjectSchema } from '@/lib/validators';
 import { eq } from 'drizzle-orm';
 

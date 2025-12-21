@@ -1,171 +1,214 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
+import { useParams, usePathname, useRouter } from "next/navigation"
 import {
-  IconCamera,
+  IconSettings2,
   IconChartBar,
-  IconDashboard,
-  IconDatabase,
-  IconFileAi,
-  IconFileDescription,
-  IconFileWord,
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
-  IconListDetails,
-  IconReport,
-  IconSearch,
-  IconSettings,
-  IconUsers,
+  IconRobot,
+  IconLogout,
+  IconBell,
+  IconUser,
+  IconChevronUp,
 } from "@tabler/icons-react"
+import { createClient } from "@/lib/supabase/client"
 
-import { NavDocuments } from "@/components/dashboard/sidebar/nav-documents"
 import { NavMain } from "@/components/dashboard/sidebar/nav-main"
 import { NavSecondary } from "@/components/dashboard/sidebar/nav-secondary"
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
+import { ProjectSwitcher } from "@/components/dashboard/sidebar/project-switcher"
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarFooter, 
+  SidebarHeader, 
+  SidebarMenu, 
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import { useUser } from "@/features/auth/providers/user-provider"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const params = useParams()
+  const pathname = usePathname()
+  const router = useRouter()
+  const { user } = useUser()
+  
+  // Get projectId from URL params (when inside /dashboard/[projectId]/*)
+  const projectId = params.projectId as string | undefined
+  const isInProjectContext = !!projectId
+  
+  // Check current route for active state
+  const isProjectHub = pathname === '/dashboard'
+  const isAccountPage = pathname === '/dashboard/account'
+  
+  // Navigation items based on context
+  const navMain = isInProjectContext ? [
     {
-      title: "Home",
-      url: "#",
+      title: "Overview",
+      url: `/dashboard/${projectId}`,
       icon: IconChartBar,
+      isActive: pathname === `/dashboard/${projectId}`,
     },
     {
-      title: "Context",
-      url: "/dashboard/context",
-      icon: IconListDetails,
+      title: "AI Copilot",
+      url: `/dashboard/${projectId}/ai-copilot`,
+      icon: IconRobot,
+      isActive: pathname === `/dashboard/${projectId}/ai-copilot`,
     },
     {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
+      title: "Project Settings",
+      url: `/dashboard/${projectId}/settings`,
+      icon: IconFolder,
+      isActive: pathname.startsWith(`/dashboard/${projectId}/settings`),
     },
+    {
+      title: "Integrations",
+      url: `/dashboard/${projectId}/integrations`,
+      icon: IconSettings2,
+      isActive: pathname === `/dashboard/${projectId}/integrations`,
+    },
+  ] : [
     {
       title: "Projects",
-      url: "#",
+      url: "/dashboard",
       icon: IconFolder,
+      isActive: isProjectHub,
     },
+  ]
+
+  const navSecondary = [
     {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
+      title: "Account",
+      url: "/dashboard/account",
+      icon: IconUser,
+      isActive: isAccountPage,
     },
     {
       title: "Get Help",
       url: "#",
       icon: IconHelp,
     },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
-    },
-  ],
-}
+  ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  // Get user initials for display
+  const userInitials = user?.firstName && user?.lastName 
+    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    : user?.email?.substring(0, 2).toUpperCase() || '??'
+
+  // Logout handler
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/auth/sign-in')
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-              render={
-                <a href="#">
-                  <IconInnerShadowTop className="!size-5" />
-                  <span className="text-base font-semibold">Acme Inc.</span>
-                </a>
-              }
-            />
+            <Link 
+              href="/dashboard"
+              className="flex items-center gap-2 p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <IconInnerShadowTop className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-semibold">Geo Tracker</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  Analytics & Traffic
+                </span>
+              </div>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
+        
+        {/* Project Switcher */}
+        <ProjectSwitcher />
       </SidebarHeader>
+      
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={navMain} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
+      
       <SidebarFooter>
+        {/* Notifications */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center gap-2 w-full cursor-pointer hover:bg-sidebar-accent/50 p-2 rounded-md">
+              <div className="relative">
+                <IconBell className="size-4" />
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              </div>
+              <span className="truncate group-data-[collapsible=icon]:hidden text-sm">Notifications</span>
+              <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-1.5 group-data-[collapsible=icon]:hidden">
+                3
+              </Badge>
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        {/* User Menu with Logout */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-accent cursor-pointer">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                  {userInitials}
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-medium">
+                    {user?.firstName && user?.lastName 
+                      ? `${user.firstName} ${user.lastName}`
+                      : 'User'}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {user?.email}
+                  </span>
+                </div>
+                <IconChevronUp className="size-4 ml-auto group-data-[collapsible=icon]:hidden text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                className="w-56" 
+                align="end" 
+                side="top"
+                sideOffset={8}
+              >
+                <DropdownMenuItem onClick={() => router.push('/dashboard/account')}>
+                  <IconUser className="mr-2 h-4 w-4" />
+                  <span>Account Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <IconLogout className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from '@/backend/db/schema';
+import * as schema from '@/backend/db/tables/schema';
 
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/postgres';
+const connectionString = process.env.DATABASE_URL as string;
 
 // Configuration optimisée pour Supabase Transaction Mode
 // max: 1 permet d'éviter "max clients reached" en dev avec hot-reloading

@@ -1,8 +1,8 @@
-import { db } from "@/lib/db";
-import { integrations } from "@/backend/db/schema";
+import { db } from "@/backend/db/db";
+import { integrations } from "@/backend/db/tables/integrations";
 import { eq, and } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
-import type { CreateIntegrationInput, UpdateIntegrationInput } from "@/backend/validators/integrations.validators";
+import type { CreateIntegrationInput } from "@/backend/validators/integrations.validators";
 
 // READ (Cached)
 export const getIntegrationsByProject = unstable_cache(

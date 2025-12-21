@@ -1,7 +1,6 @@
 import { LandingContainer } from "@/components/landing-page/container";
 import { LandingSection } from "@/components/landing-page/section";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/utils";
 import { OrbitingCirclesLogo } from "@/components/landing-page/icon-orbit";
 import { AnimatedList } from "@/components/ui/animated-list";
 
@@ -101,16 +100,16 @@ export function BentoGrid() {
             {/* Stats */}
             <div className="grid grid-cols-3 border-t border-dashed border-border/40 divide-x divide-dashed divide-border/40">
               <div className="p-6 text-center">
-                <div className="text-3xl font-bold mb-1">100+</div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">AI Agents created</div>
+                <div className="text-3xl font-bold mb-1">8</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">Sources tracked</div>
               </div>
               <div className="p-6 text-center">
                 <div className="text-3xl font-bold mb-1">97%</div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">Task completion rate</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">Visibility rate</div>
               </div>
               <div className="p-6 text-center">
                 <div className="text-3xl font-bold mb-1">50K+</div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">Agents running</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">Scans analyzed</div>
               </div>
             </div>
           </div>

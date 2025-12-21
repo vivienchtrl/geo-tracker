@@ -1,10 +1,10 @@
 'use server'
 
-import { db } from "@/lib/db"
-import { icpProfiles } from "@/backend/db/schema"
-import { eq } from "drizzle-orm"
+import { db } from "@/backend/db/db"
+import { icpProfiles } from "@/backend/db/tables/icp-profile"
+import { and, eq } from "drizzle-orm"
 import { revalidateTag } from "next/cache"
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { createIcpProfileSchema, UpdateIcpProfileInput } from "@/backend/validators/icp-profiles.validators"
 import { getProjectByUserId } from "@/backend/services/project-service"
@@ -26,22 +26,21 @@ export async function createIcpProfileAction(data: unknown) {
     const validation = createIcpProfileSchema.safeParse(data)
     if (!validation.success) return { error: "Invalid data", details: validation.error.flatten() }
 
-    await db.insert(icpProfiles).values({
-      projectId: project.id,
-      ...validation.data
-    })
+    await db.insert(icpProfiles).values({ ...validation.data, projectId: project.id }).returning()
 
     revalidateTag('icp-profiles', 'page')
     return { success: true }
-  } catch (error) {
+  } catch {
     return { error: "Failed to create ICP profile" }
   }
 }
 
 export async function updateIcpProfileAction(id: string, data: UpdateIcpProfileInput) {
     try {
-        await getSessionUser()
-        await db.update(icpProfiles).set(data).where(eq(icpProfiles.id, id))
+        const user = await getSessionUser()
+        const project = await getProjectByUserId(user.id)
+        if (!project) throw new Error("No project found")
+        await db.update(icpProfiles).set(data).where(and(eq(icpProfiles.id, id), eq(icpProfiles.projectId, project.id)))
         revalidateTag('icp-profiles', 'page')
         return { success: true }
     } catch {
@@ -51,8 +50,10 @@ export async function updateIcpProfileAction(id: string, data: UpdateIcpProfileI
 
 export async function deleteIcpProfileAction(id: string) {
     try {
-        await getSessionUser()
-        await db.delete(icpProfiles).where(eq(icpProfiles.id, id))
+        const user = await getSessionUser()
+        const project = await getProjectByUserId(user.id)
+        if (!project) throw new Error("No project found")
+        await db.delete(icpProfiles).where(and(eq(icpProfiles.id, id), eq(icpProfiles.projectId, project.id)))
         revalidateTag('icp-profiles', 'page')
         return { success: true }
     } catch {

@@ -1,30 +1,34 @@
 'use client'
 
 import { UserProvider } from '@/features/auth/providers/user-provider'
-import { ProjectProvider } from '@/features/project/providers/project-provider'
+import { UserProjectsProvider } from '@/features/project/providers/user-projects-provider'
 import { PostHogProvider } from '@/features/analytics/providers/posthog-provider'
-import type { DashboardContext } from '@/backend/services/dashboard.service'
+import type { User } from '@/types/db'
+import type { ProjectWithRole } from '@/backend/services/project-service'
 
 type DashboardProvidersProps = {
   children: React.ReactNode
-  initialData: DashboardContext
+  user: User
+  projects: ProjectWithRole[]
 }
 
+/**
+ * Root-level providers for the dashboard.
+ * Provides: User context + List of all user's projects
+ * 
+ * Note: Current project context is provided by [projectId]/layout.tsx
+ */
 export function DashboardProviders({
   children,
-  initialData
+  user,
+  projects
 }: DashboardProvidersProps) {
   return (
     <PostHogProvider>
-      <UserProvider user={initialData.user}>
-        <ProjectProvider project={initialData.project}>
-          {/* 
-            TODO: Add Providers for Keywords/ICP if needed globally 
-            For now, we just pass User/Project as they are strictly required for the Shell.
-            Specific pages will consume the other data or we can add a 'DashboardStore' later.
-          */}
+      <UserProvider user={user}>
+        <UserProjectsProvider projects={projects}>
           {children}
-        </ProjectProvider>
+        </UserProjectsProvider>
       </UserProvider>
     </PostHogProvider>
   )

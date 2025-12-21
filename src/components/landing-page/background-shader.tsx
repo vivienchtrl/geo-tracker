@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
+import { useTheme } from "next-themes";
 
 interface AnimatedGradientBackgroundProps {
    /** 
@@ -91,14 +92,29 @@ const AnimatedGradientBackground: React.FC<AnimatedGradientBackgroundProps> = ({
    topOffset = 0,
    containerClassName = "",
 }) => {
+   const { resolvedTheme } = useTheme();
+   const [mounted, setMounted] = useState(false);
 
+   useEffect(() => {
+      setTimeout(() => {
+         setMounted(true);
+      }, 100);
+   }, []);
 
+   // Swap the first color (background) based on theme if using defaults
+   const effectiveColors = useMemo(() => {
+      const colors = [...gradientColors];
+      if (mounted && resolvedTheme === "light" && colors[0] === "#0A0A0A") {
+         colors[0] = "#FFFFFF";
+      }
+      return colors;
+   }, [mounted, resolvedTheme, gradientColors]);
 
-   // Validation: Ensure gradientStops and gradientColors lengths match
-   if (gradientColors.length !== gradientStops.length) {
+   // Validation: Ensure gradientStops and effectiveColors lengths match
+   if (effectiveColors.length !== gradientStops.length) {
       throw new Error(
          `GradientColors and GradientStops must have the same length.
-     Received gradientColors length: ${gradientColors.length},
+     Received gradientColors length: ${effectiveColors.length},
      gradientStops length: ${gradientStops.length}`
       );
    }
@@ -106,6 +122,7 @@ const AnimatedGradientBackground: React.FC<AnimatedGradientBackgroundProps> = ({
    const containerRef = useRef<HTMLDivElement | null>(null);
 
    useEffect(() => {
+      if (!mounted) return;
       let animationFrame: number;
       let width = startingGap;
       let directionWidth = 1;
@@ -118,10 +135,10 @@ const AnimatedGradientBackground: React.FC<AnimatedGradientBackgroundProps> = ({
          width += directionWidth * animationSpeed;
 
          const gradientStopsString = gradientStops
-            .map((stop, index) => `${gradientColors[index]} ${stop}%`)
+            .map((stop, index) => `${effectiveColors[index]} ${stop}%`)
             .join(", ");
 
-         const gradient = `radial-gradient(${width}% ${width+topOffset}% at 50% 20%, ${gradientStopsString})`;
+         const gradient = `radial-gradient(${width}% ${width + topOffset}% at 50% 20%, ${gradientStopsString})`;
 
          if (containerRef.current) {
             containerRef.current.style.background = gradient;
@@ -133,7 +150,9 @@ const AnimatedGradientBackground: React.FC<AnimatedGradientBackgroundProps> = ({
       animationFrame = requestAnimationFrame(animateGradient);
 
       return () => cancelAnimationFrame(animationFrame); // Cleanup animation
-   }, [startingGap, Breathing, gradientColors, gradientStops, animationSpeed, breathingRange, topOffset]);
+   }, [startingGap, Breathing, effectiveColors, gradientStops, animationSpeed, breathingRange, topOffset, mounted]);
+
+   if (!mounted) return <div className={`absolute inset-0 ${containerClassName}`} />;
 
    return (
       <motion.div

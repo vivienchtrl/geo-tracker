@@ -1,0 +1,206 @@
+---
+description: Dashboard Architecture - Projects, Users & Navigation
+globs: ["src/app/dashboard/**/*", "src/features/project/**/*", "src/components/dashboard/**/*"]
+---
+
+# Dashboard Architecture
+
+## Overview
+
+The dashboard is a **project-scoped** application where users can manage multiple websites (projects). Each project is a billing unit and contains its own analytics, keywords, ICP profiles, and integrations.
+
+## Route Structure
+
+```
+/dashboard                              → Project Hub (list all projects)
+/dashboard/account                      → User account settings (NOT project-scoped)
+/dashboard/projects/new                 → Create new project
+
+/dashboard/[projectId]                  → Project Dashboard (Analytics)
+/dashboard/[projectId]/settings         → Project Settings (Tabs: General, Keywords, ICP, Team, Billing)
+/dashboard/[projectId]/integrations     → Integrations (Google Analytics, Search Console)
+/dashboard/[projectId]/ai-copilot       → AI Copilot (future feature)
+```
+
+## Data Model
+
+### Users & Projects Relationship
+
+```
+┌─────────────────┐
+│     users       │  ← Supabase Auth user
+│  id, email...   │
+└────────┬────────┘
+         │
+         │ owns (1:n via owner_id)
+         ▼
+┌─────────────────┐
+│    projects     │  ← Site/Website = Billing Unit
+│  owner_id       │
+│  name, url      │
+└────────┬────────┘
+         │
+         │ has members (n:m)
+         ▼
+┌─────────────────┐
+│ project_members │  ← Collaboration
+│  project_id     │
+│  user_id        │
+│  role           │  (owner | editor | viewer)
+└─────────────────┘
+```
+
+### Role Permissions
+
+| Action | Owner | Editor | Viewer |
+|--------|-------|--------|--------|
+| View Dashboard | ✅ | ✅ | ✅ |
+| Manage Keywords | ✅ | ✅ | ❌ |
+| Manage ICP | ✅ | ✅ | ❌ |
+| Manage Integrations | ✅ | ❌ | ❌ |
+| Manage Team | ✅ | ❌ | ❌ |
+| Delete Project | ✅ | ❌ | ❌ |
+| Billing | ✅ | ❌ | ❌ |
+
+## Layout Hierarchy
+
+```
+/dashboard/layout.tsx (ROOT)
+├── Auth Check → Redirect to /auth/sign-in if not authenticated
+├── Fetch User from DB
+├── Fetch ALL projects user has access to (owned + member)
+├── Provide: UserProvider + UserProjectsProvider
+├── Render: Sidebar + SiteHeader + {children}
+│
+└── /dashboard/[projectId]/layout.tsx (NESTED)
+    ├── Validate projectId from URL
+    ├── Validate user has access to project
+    ├── Fetch project data + user's role
+    ├── Provide: ProjectProvider (current project + role)
+    └── Render: {children}
+```
+
+## Providers
+
+### Root Level (dashboard/layout.tsx)
+
+```typescript
+<DashboardProviders user={user} projects={projects}>
+  // Provides:
+  // - UserProvider: { user, isLoading }
+  // - UserProjectsProvider: { projects: ProjectWithRole[], isLoading }
+</DashboardProviders>
+```
+
+### Project Level ([projectId]/layout.tsx)
+
+```typescript
+<ProjectProvider project={project} role={role}>
+  // Provides:
+  // - project: Project (current project)
+  // - role: 'owner' | 'editor' | 'viewer'
+  // - isLoading: boolean
+</ProjectProvider>
+```
+
+## Sidebar Navigation
+
+The sidebar dynamically changes based on context:
+
+### When NOT in a project (/dashboard, /dashboard/account)
+
+```typescript
+navMain = [
+  { title: "Projects", url: "/dashboard", icon: IconFolder }
+]
+```
+
+### When IN a project (/dashboard/[projectId]/*)
+
+```typescript
+navMain = [
+  { title: "Overview", url: `/dashboard/${projectId}` },
+  { title: "AI Copilot", url: `/dashboard/${projectId}/ai-copilot` },
+  { title: "Project Settings", url: `/dashboard/${projectId}/settings` },
+  { title: "Integrations", url: `/dashboard/${projectId}/integrations` },
+]
+```
+
+## Key Services
+
+### project-service.ts
+
+```typescript
+// Get all projects user has access to
+getUserProjects(userId: string): Promise<ProjectWithRole[]>
+
+// Get specific project with user's role (for access validation)
+getProjectWithRole(projectId: string, userId: string): Promise<ProjectWithRole | null>
+
+// Get project by ID (no access check)
+getProjectById(projectId: string): Promise<Project | null>
+```
+
+### project-members.service.ts
+
+```typescript
+// Collaboration
+inviteMember(projectId, { email, role })
+acceptInvitation(userId, userEmail, { token })
+getProjectMembers(projectId)
+getUserProjectRole(projectId, userId)
+updateMemberRole({ projectId, userId, role })
+removeMember(projectId, userId)
+```
+
+## Project Switcher Behavior
+
+1. Shows current project name + role badge
+2. Dropdown lists ALL projects user has access to
+3. Clicking a project navigates to `/dashboard/[newProjectId]`
+4. **Preserves sub-path**: If on `/dashboard/abc/settings`, switching to project XYZ goes to `/dashboard/xyz/settings`
+
+## Settings Page Tabs
+
+Located at `/dashboard/[projectId]/settings`:
+
+| Tab | Content | Access |
+|-----|---------|--------|
+| **General** | Project name, URL, delete project | Owner only for edit |
+| **Keywords** | `KeywordsManager` component | Owner, Editor |
+| **ICP** | `IcpManager` component | Owner, Editor |
+| **Team** | `MembersTab` - invite, manage roles | Owner only |
+| **Billing** | Stripe integration (coming soon) | Owner only |
+
+## Pricing Model
+
+- **Per-site billing**: Each project is a billing unit
+- **Owner pays**: The project owner is responsible for the subscription
+- **Flexible for agencies**: One user can own multiple projects, each billed separately
+
+## Authentication Flow
+
+```
+1. User visits /dashboard
+2. middleware.ts checks Supabase session
+   → No session? Redirect to /auth/sign-in
+3. dashboard/layout.tsx fetches user + projects
+   → No user in DB? Redirect to /auth/sign-in
+4. dashboard/page.tsx (Project Hub)
+   → 0 projects? Redirect to /auth/onboarding
+   → 1 project? Redirect to /dashboard/[projectId]
+   → 2+ projects? Show project selection grid
+```
+
+## Important Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/dashboard/layout.tsx` | Root layout with auth + providers |
+| `src/app/dashboard/providers.tsx` | Client providers wrapper |
+| `src/app/dashboard/[projectId]/layout.tsx` | Project-scoped layout |
+| `src/features/project/providers/project-provider.tsx` | Current project context |
+| `src/features/project/providers/user-projects-provider.tsx` | All user's projects |
+| `src/backend/services/project-service.ts` | Project data fetching |
+| `src/components/dashboard/sidebar/app-sidebar.tsx` | Main sidebar |
+| `src/components/dashboard/sidebar/project-switcher.tsx` | Project dropdown |

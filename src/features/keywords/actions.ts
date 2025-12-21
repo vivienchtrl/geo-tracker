@@ -1,10 +1,10 @@
 'use server'
 
-import { db } from "@/lib/db"
-import { keywords } from "@/backend/db/schema"
+import { db } from "@/backend/db/db"
+import { keywords } from "@/backend/db/tables/keywords"
 import { eq } from "drizzle-orm"
 import { revalidateTag } from "next/cache"
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { createKeywordSchema, UpdateKeywordInput } from "@/backend/validators/keywords.validators"
 
@@ -36,7 +36,7 @@ export async function createKeywordAction(term: string, tags: string[] = []) {
 
     revalidateTag('keywords', 'page')
     return { success: true }
-  } catch (error) {
+  } catch {
     return { error: "Failed to create keyword" }
   }
 }
@@ -44,7 +44,8 @@ export async function createKeywordAction(term: string, tags: string[] = []) {
 export async function updateKeywordAction(id: string, data: UpdateKeywordInput) {
     try {
         const user = await getSessionUser()
-        // Auth check logic (omitted for brevity, assume owner)
+        const project = await getProjectByUserId(user.id)
+        if (!project) throw new Error("No project found")
         
         await db.update(keywords).set(data).where(eq(keywords.id, id))
         revalidateTag('keywords', 'page')

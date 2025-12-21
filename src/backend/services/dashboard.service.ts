@@ -1,12 +1,14 @@
-import { db } from "@/lib/db"
-import { project, users, keywords, icpProfiles, aiSearch, searchConsoleMetrics, analyticsMetrics, trafficSources } from "@/backend/db/schema"
-import { eq, desc, and, gte } from "drizzle-orm"
+import { db } from "@/backend/db/db"
+import { project, users, keywords, icpProfiles, aiSearch, searchConsoleMetrics, analyticsMetrics, trafficSources, projectMembers } from "@/backend/db/tables/schema"
+import { eq, desc, and, gte, or } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 import type { User, Project, Keyword, IcpProfile, AiSearch, SearchConsoleMetric, AnalyticsMetric, TrafficSource } from "@/types/db"
 
 export type DashboardContext = {
   user: User
   project: Project
+  projects: Project[]
+  role: 'owner' | 'editor' | 'viewer'
   keywords: Keyword[]
   icpProfiles: IcpProfile[]
   aiSearch: AiSearch[] // Derniers scans pour les métriques rapides
@@ -32,29 +34,62 @@ export const getDashboardContext = async (userId: string): Promise<DashboardCont
 
       if (!userResult) return null
 
-      // 2. Fetch Project & Related Data in Parallel
-      // This is the "Big Query" that powers the entire initial view
-      const [projectResult] = await Promise.all([
-        db.query.project.findFirst({
+      // 2. Fetch All Projects User has access to (Owned OR Member)
+      const [ownedProjects, memberProjects] = await Promise.all([
+        db.query.project.findMany({
           where: eq(project.ownerId, userId)
+        }),
+        db.select({
+          project: project,
+          role: projectMembers.role
         })
+        .from(projectMembers)
+        .innerJoin(project, eq(projectMembers.projectId, project.id))
+        .where(eq(projectMembers.userId, userId))
       ])
 
-      if (!projectResult) return null
+      // Combine and Deduplicate Projects
+      const allProjectsMap = new Map<string, Project>();
+      const rolesMap = new Map<string, 'owner' | 'editor' | 'viewer'>();
+
+      // Add owned projects
+      ownedProjects.forEach(p => {
+        allProjectsMap.set(p.id, p);
+        rolesMap.set(p.id, 'owner');
+      });
+
+      // Add member projects (might overlap if owner is also in members table)
+      memberProjects.forEach(row => {
+        allProjectsMap.set(row.project.id, row.project);
+        // If not already set as owner, use the member role
+        if (!rolesMap.has(row.project.id) || rolesMap.get(row.project.id) !== 'owner') {
+             rolesMap.set(row.project.id, row.role as 'owner' | 'editor' | 'viewer');
+        }
+      });
+
+      const allProjects = Array.from(allProjectsMap.values());
+
+      if (allProjects.length === 0) return null
+
+      // Default to the first project found (or logic to pick last active)
+      // For now, we pick the first one.
+      // TODO: Implement "last active project" logic via User preferences or separate DB table
+      const currentProject = allProjects[0];
+      const currentRole = rolesMap.get(currentProject.id) || 'viewer';
 
       // 3. Once we have the project ID, fetch its sub-resources
       // We do this in a second parallel batch
       const [keywordsResult, icpResult, aiSearchResult] = await Promise.all([
         db.query.keywords.findMany({
-          where: eq(keywords.projectId, projectResult.id),
+          where: eq(keywords.projectId, currentProject.id),
           orderBy: desc(keywords.createdAt)
         }),
         db.query.icpProfiles.findMany({
-          where: eq(icpProfiles.projectId, projectResult.id),
+          where: eq(icpProfiles.projectId, currentProject.id),
           orderBy: desc(icpProfiles.createdAt)
         }),
         db.query.aiSearch.findMany({
-          where: eq(aiSearch.projectId, projectResult.id),
+          where: eq(aiSearch.projectId, currentProject.id),
           orderBy: desc(aiSearch.createdAt),
           limit: 10 // On limite aux 10 derniers pour l'aperçu rapide (le reste sera paginé ailleurs)
         })
@@ -62,7 +97,9 @@ export const getDashboardContext = async (userId: string): Promise<DashboardCont
 
       return {
         user: userResult,
-        project: projectResult,
+        project: currentProject,
+        projects: allProjects,
+        role: currentRole,
         keywords: keywordsResult,
         icpProfiles: icpResult,
         aiSearch: aiSearchResult
@@ -114,8 +151,8 @@ export const getDashboardAnalytics = async (projectId: string): Promise<Dashboar
         }),
         db.query.trafficSources.findMany({
           where: and(
-             eq(trafficSources.projectId, projectId),
-             gte(trafficSources.date, dateStr)
+            eq(trafficSources.projectId, projectId),
+            gte(trafficSources.date, dateStr)
           )
         })
       ])
