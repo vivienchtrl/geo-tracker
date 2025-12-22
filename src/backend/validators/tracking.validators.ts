@@ -88,7 +88,6 @@ export const capturePageVisitSchema = z.object({
    */
   url: z
     .string()
-    .url("Invalid URL format")
     .max(2048, "URL too long")
     .optional()
     .describe("Full URL including query parameters"),
@@ -109,7 +108,7 @@ export const capturePageVisitSchema = z.object({
    */
   referrer: z
     .string()
-    .url("Invalid referrer URL")
+    .max(2048, "Referrer too long")
     .optional()
     .or(z.literal(""))
     .describe("Page referrer URL"),

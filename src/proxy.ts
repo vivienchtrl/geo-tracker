@@ -18,8 +18,8 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { getBotInfo, isKnownAIProvider } from "@/features/tracking/utils/bot-detector";
-import { capturePageVisit } from "@/backend/services/tracking.service";
+import { getBotInfo, isKnownAIProvider, isBot } from "@/features/tracking/utils/bot-detector";
+import { capturePageVisit, getProjectIdByDomain } from "@/backend/services/tracking.service";
 
 // ============================================================
 // CONFIGURATION
@@ -83,34 +83,44 @@ function extractRequestInfo(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const searchParams = request.nextUrl.searchParams;
+  const host = request.headers.get('host') || '';
   
-  // HARMONISATION : On accepte 'p' OU 'projectId'
-  const projectId = searchParams.get('p') || searchParams.get('projectId'); 
+  // 1. DÉTERMINATION DU PROJET (projectId ou par domaine)
+  let projectId = searchParams.get('p') || searchParams.get('projectId'); 
 
-  // CAPTURE AUTOMATIQUE (Server-Side)
-  // Si un bot charge le script ou le pixel, on l'enregistre immédiatement
+  // Si pas de projectId dans l'URL, on essaie de le trouver par le domaine
+  // Utile pour capturer les bots qui visitent l'accueil sans charger les scripts
+  if (!projectId && shouldTrack(pathname)) {
+    projectId = await getProjectIdByDomain(host);
+  }
+
+  // 2. DÉTECTION ET CAPTURE AUTOMATIQUE (Server-Side)
+  const { userAgent, referer, ip } = extractRequestInfo(request);
+  const botDetected = isBot(userAgent);
+
+  // Si c'est un bot OU un asset de tracking, on capture
   const isTrackingAsset = pathname.includes('tracker') || pathname.includes('pixel');
 
-  if (isTrackingAsset && projectId) {
-    const { userAgent, referer, ip } = extractRequestInfo(request);
-    
-    // On enregistre la visite en DB de manière asynchrone (non-bloquant)
+  if (projectId && (botDetected || isTrackingAsset)) {
+    // On enregistre la visite en DB
+    // On utilise un try/catch pour ne jamais bloquer l'user si l'enregistrement échoue
     capturePageVisit({
       projectId,
       eventType: 'page_view',
-      path: referer || 'external-site', // Le site où le bot a chargé l'asset
+      path: pathname || '/',
       userAgent,
       referrer: referer || undefined,
       metadata: { 
-        detection_method: 'proxy_auto_capture',
-        asset_type: pathname.includes('pixel') ? 'pixel' : 'script',
-        note: `Captured server-side when ${pathname.includes('pixel') ? 'pixel' : 'script'} was requested`
+        detection_method: botDetected ? 'proxy_bot_detected' : 'proxy_asset_load',
+        asset_type: isTrackingAsset ? (pathname.includes('pixel') ? 'pixel' : 'script') : 'page',
+        domain: host,
+        isBot: botDetected
       }
     }, ip).catch(err => console.error('[PROXY-SAVE-ERROR]', err));
   }
 
   // ============================================================
-  // STEP 1: Track requests with bot detection
+  // STEP 1: Track requests with bot detection (Diagnostic Logs)
   // ============================================================
   if (shouldTrack(pathname)) {
     try {

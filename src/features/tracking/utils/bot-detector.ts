@@ -231,7 +231,7 @@ const BOT_PATTERNS: BotPattern[] = [
 
   // === GENERIC BOT INDICATORS (Low specificity, fallback) ===
   {
-    pattern: /(bot|crawler|spider|scraper|wget|curl|scrapy|libcurl|urllib|request|httpx|python|java|go-http-client)(?:\s|\/|$)/i,
+    pattern: /(bot|crawler|spider|scraper|wget|curl|scrapy|libcurl|urllib|request|httpx|python|java|go-http-client|axios|insomnia|postman|thunder-client|headless|puppeteer|selenium|playwright|aiohttp|php)(?:\s|\/|$)/i,
     botType: "other",
     botName: "Generic Bot",
     category: "other",

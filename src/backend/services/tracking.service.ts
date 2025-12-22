@@ -108,6 +108,29 @@ async function validateProject(projectId: string): Promise<ProjectValidation> {
 // ============================================================================
 
 /**
+ * Find project ID by domain/URL
+ */
+export async function getProjectIdByDomain(domain: string): Promise<string | null> {
+  try {
+    // We clean the domain to be sure (remove www, etc)
+    const cleanDomain = domain.replace(/^www\./, "").toLowerCase();
+
+    const result = await db.query.project.findFirst({
+      where: (p, { or, ilike }) => 
+        or(
+          ilike(p.url, `%${cleanDomain}%`),
+          ilike(p.url, `%${domain.toLowerCase()}%`)
+        ),
+      columns: { id: true },
+    });
+
+    return result?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Capture a page visit event
  *
  * Steps:
