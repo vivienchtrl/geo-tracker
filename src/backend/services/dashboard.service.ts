@@ -187,7 +187,10 @@ export const getDashboardAnalytics = async (projectId: string): Promise<Dashboar
         referrerBreakdown: referrers,
         socialBreakdown: social,
         botActivity: bots,
-        aiSearchStats: aiStats
+        aiSearchStats: aiStats,
+        competitors: [],
+        models: [],
+        dashboardAnalytics: []
       }
     },
     [`dashboard-analytics-${projectId}`],
