@@ -263,12 +263,10 @@ export async function checkOnboardingStatus() {
       columns: { firstName: true, lastName: true }
     })
 
-    const userProjects = await db.query.project.findMany({
-      where: eq(project.ownerId, user.id),
-      limit: 1
-    })
-
-    const needsOnboarding = !userData?.firstName || userProjects.length === 0
+    // Update: Returning users who have already setup their profile
+    // should NOT be forced back into the onboarding flow, 
+    // even if they have 0 projects.
+    const needsOnboarding = !userData?.firstName
 
     return { needsOnboarding }
 
@@ -281,7 +279,7 @@ export async function checkOnboardingStatus() {
 /**
  * Redirect to dashboard after onboarding
  */
-export async function redirectToDashboard(projectId: string) {
-  redirect(`/dashboard/${projectId}`)
+export async function redirectToDashboard(_projectId: string) {
+  redirect('/dashboard')
 }
 

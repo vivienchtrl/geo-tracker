@@ -32,7 +32,7 @@ export type BotType =
 export interface BotDetectionResult {
   botType: BotType;
   botName: string | null;
-  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "browser_bot" | null;
+  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "other" | null;
   confidence: "high" | "medium" | "low";
   userAgentPattern?: string; // Matched pattern source
 }
@@ -41,7 +41,7 @@ interface BotPattern {
   pattern: RegExp;
   botType: BotType;
   botName: string;
-  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "browser_bot" | "other";
+  category: "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "other";
   confidence: "high" | "medium" | "low";
   description?: string; // For debugging
 }
@@ -77,7 +77,7 @@ const BOT_PATTERNS: BotPattern[] = [
     pattern: /ChatGPT-User/i,
     botType: "gpt",
     botName: "ChatGPT Browser",
-    category: "browser_bot",
+    category: "ai_crawler",
     confidence: "high",
     description: "ChatGPT Web Browser / Claude for Web with GPT integration",
   },
@@ -87,7 +87,7 @@ const BOT_PATTERNS: BotPattern[] = [
     pattern: /Claude-Web/i,
     botType: "claude",
     botName: "Claude Web",
-    category: "browser_bot",
+    category: "ai_crawler",
     confidence: "high",
     description: "Anthropic Claude Web browsing feature",
   },
@@ -270,7 +270,7 @@ export function detectBot(userAgent: string): BotDetectionResult {
       return {
         botType: detector.botType,
         botName: detector.botName,
-        category: detector.category as "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "browser_bot" | null,
+        category: detector.category as "ai_crawler" | "search_engine" | "social_crawler" | "monitoring" | "other" | null,
         confidence: detector.confidence,
         userAgentPattern: detector.pattern.source,
       };

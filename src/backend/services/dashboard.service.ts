@@ -16,6 +16,9 @@ export type DashboardContext = {
 }
 
 export type DashboardAnalytics = {
+  competitors: never[]
+  models: never[]
+  dashboardAnalytics: never[]
   gscHistory: SearchConsoleMetric[]
   analyticsHistory: AnalyticsMetric[]
   trafficSources: TrafficSource[]

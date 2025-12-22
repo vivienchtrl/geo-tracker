@@ -124,210 +124,233 @@ export function IntegrationsClient({
   }, []);
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-col gap-0 min-h-full">
       {/* --- WEBSITE TRACKER --- */}
-      <Card className="border-l-4 border-l-emerald-500 md:col-span-2 lg:col-span-3">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl font-bold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Code2 className="h-5 w-5 text-emerald-500" />
-              Website Tracker
-            </div>
-            {status.tracker ? (
-              <Badge className="bg-emerald-500 text-white">Active</Badge>
-            ) : (
-              <Badge variant="outline">Pending Setup</Badge>
-            )}
-          </CardTitle>
-        <CardDescription className="flex items-center gap-2">
-          Track visitors, bots, and AI crawlers on your website with our
-          high-reliability tracking system.
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-3.5 w-3.5 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs text-[10px] leading-relaxed">
-                Our hybrid snippet captures both standard browsers and 
-                fast-moving AI bots (like ChatGPT) by using a combination 
-                of JS and an invisible beacon.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Installation Instructions */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Installation</h4>
-            <p className="text-sm text-muted-foreground">
-              Add this code snippet to the <code className="bg-muted px-1 py-0.5 rounded">&lt;head&gt;</code> section of your website:
-            </p>
-          </div>
-
-          {/* Code Snippet */}
-          <div className="relative">
-            <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto font-mono">
-              <code>{trackerSnippet}</code>
-            </pre>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2"
-              onClick={copySnippet}
-            >
-              {copied ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Status Check */}
-          <div className="flex items-center justify-between pt-2 border-t">
-            <div className="text-sm">
+      <div className="border-b border-dashed border-border/80">
+        <Card variant="bento" className="border-0 rounded-none shadow-none bg-transparent px-8 py-10">
+          <CardHeader className="px-0 pb-6">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Code2 className="h-3.5 w-3.5 text-primary/60" />
+                Website Tracker
+              </div>
               {status.tracker ? (
-                <p className="flex items-center text-emerald-600">
-                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                  Receiving signals
-                  {status.lastSignal && (
-                    <span className="text-muted-foreground ml-2">
-                      (Last: {new Date(status.lastSignal).toLocaleString()})
-                    </span>
-                  )}
-                </p>
+                <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 bg-emerald-50/50 uppercase text-[9px] tracking-widest px-2 py-0 rounded-none font-bold">Active</Badge>
               ) : (
-                <p className="text-muted-foreground">
-                  Waiting for first signal from your website...
-                </p>
+                <Badge variant="outline" className="uppercase text-[9px] tracking-widest px-2 py-0 rounded-none font-bold">Pending Setup</Badge>
+              )}
+            </CardTitle>
+            <CardDescription className="text-xl font-bold tracking-tighter text-foreground mt-4 max-w-2xl">
+              Track visitors, bots, and AI crawlers on your website with our
+              high-reliability tracking system.
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground ml-2 inline-block cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-[10px] leading-relaxed uppercase tracking-wider">
+                    Our hybrid snippet captures both standard browsers and 
+                    fast-moving AI bots (like ChatGPT) by using a combination 
+                    of JS and an invisible beacon.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-0 space-y-6">
+            <div className="grid lg:grid-cols-2 gap-12">
+              {/* Installation Instructions */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Installation</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Add this code snippet to the <code className="bg-muted px-1 py-0.5 rounded font-mono text-xs">&lt;head&gt;</code> section of your website:
+                  </p>
+                </div>
+
+                {/* Code Snippet */}
+                <div className="relative group">
+                  <pre className="bg-muted/30 border border-dashed border-border/60 p-6 rounded-none text-xs overflow-x-auto font-mono leading-relaxed">
+                    <code>{trackerSnippet}</code>
+                  </pre>
+                  <Button
+                    variant="dashed"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={copySnippet}
+                  >
+                    {copied ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Status Check & Info */}
+              <div className="flex flex-col justify-between p-8 border border-dashed border-border/60 bg-muted/5">
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Connection Status</h4>
+                  <div className="text-sm">
+                    {status.tracker ? (
+                      <div className="space-y-2">
+                        <p className="flex items-center text-emerald-600 font-medium">
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Receiving signals
+                        </p>
+                        {status.lastSignal && (
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Last pulse: {new Date(status.lastSignal).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground italic">
+                        Waiting for first signal from your website...
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-8 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Need help?</span>
+                    <a
+                      href="#"
+                      className="text-[10px] uppercase tracking-widest font-bold text-primary hover:underline flex items-center gap-1"
+                    >
+                      Documentation
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                  <Button
+                    variant="dashed"
+                    size="sm"
+                    className="uppercase text-[10px] font-bold tracking-widest px-6"
+                    onClick={checkTrackerSignal}
+                    disabled={isCheckingSignal}
+                  >
+                    {isCheckingSignal ? (
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                    )}
+                    Check Status
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-0 md:grid-cols-2 border-b border-dashed border-border/80">
+        {/* --- GOOGLE ANALYTICS 4 --- */}
+        <Card variant="bento" className="border-0 border-r border-dashed border-border/80 rounded-none shadow-none bg-transparent px-8 py-10 h-full">
+          <CardHeader className="px-0 pb-6">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-3.5 w-3.5 text-orange-500/60" />
+                Google Analytics 4
+              </div>
+              {status.google ? (
+                <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 bg-emerald-50/50 uppercase text-[9px] tracking-widest px-2 py-0 rounded-none font-bold">Connected</Badge>
+              ) : (
+                <Badge variant="outline" className="uppercase text-[9px] tracking-widest px-2 py-0 rounded-none font-bold">Inactive</Badge>
+              )}
+            </CardTitle>
+            <CardDescription className="text-xl font-bold tracking-tighter text-foreground mt-4">
+              Import traffic data to correlate with AI mentions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mt-2">
+              {status.google ? (
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <div className="h-1 w-1 rounded-full bg-emerald-500" />
+                  Ready to sync
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                  Connect account to access GA4 properties
+                </div>
               )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={checkTrackerSignal}
-              disabled={isCheckingSignal}
-            >
-              {isCheckingSignal ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          </CardContent>
+          <CardFooter className="px-0 mt-8">
+            {status.google ? (
+              <Button
+                variant="dashed"
+                className="uppercase text-[10px] font-bold tracking-widest px-8 border-red-500/30 text-red-600 hover:bg-red-50"
+                onClick={handleDisconnectGoogle}
+                disabled={isDisconnecting}
+              >
+                {isDisconnecting ? "Disconnecting..." : "Disconnect Google"}
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                className="uppercase text-[10px] font-bold tracking-widest px-8 h-10"
+                onClick={handleConnectGoogle}
+              >
+                Connect with Google
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+
+        {/* --- GOOGLE SEARCH CONSOLE --- */}
+        <Card variant="bento" className="border-0 rounded-none shadow-none bg-transparent px-8 py-10 h-full">
+          <CardHeader className="px-0 pb-6">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="h-3.5 w-3.5 text-blue-500/60" />
+                Search Console
+              </div>
+              {status.google ? (
+                <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 bg-emerald-50/50 uppercase text-[9px] tracking-widest px-2 py-0 rounded-none font-bold">Connected</Badge>
               ) : (
-                <RefreshCw className="h-4 w-4 mr-1" />
+                <Badge variant="outline" className="uppercase text-[9px] tracking-widest px-2 py-0 rounded-none font-bold">Inactive</Badge>
               )}
-              Check Status
-            </Button>
-          </div>
-        </CardContent>
-        <CardFooter className="text-sm text-muted-foreground border-t pt-4">
-          <div className="flex items-center gap-2">
-            <span>Need help?</span>
-            <a
-              href="#"
-              className="text-primary hover:underline flex items-center gap-1"
-            >
-              View documentation
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </CardFooter>
-      </Card>
-
-      {/* --- GOOGLE ANALYTICS 4 --- */}
-      <Card className="border-l-4 border-l-orange-500">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl font-bold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-orange-500" />
-              Google Analytics 4
+            </CardTitle>
+            <CardDescription className="text-xl font-bold tracking-tighter text-foreground mt-4">
+              Track clicks and impressions from Search & AI Overviews.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mt-2">
+              {status.google ? (
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <div className="h-1 w-1 rounded-full bg-emerald-500" />
+                  Ready to sync
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                  Uses the same Google connection as Analytics
+                </div>
+              )}
             </div>
+          </CardContent>
+          <CardFooter className="px-0 mt-8">
             {status.google ? (
-              <Badge className="bg-emerald-500 text-white">Connected</Badge>
+              <Button variant="dashed" className="uppercase text-[10px] font-bold tracking-widest px-8 opacity-50 cursor-not-allowed" disabled={true}>
+                Connected via Google
+              </Button>
             ) : (
-              <Badge variant="outline">Inactive</Badge>
+              <Button
+                variant="dashed"
+                className="uppercase text-[10px] font-bold tracking-widest px-8 h-10"
+                onClick={handleConnectGoogle}
+              >
+                Connect with Google
+              </Button>
             )}
-          </CardTitle>
-          <CardDescription>
-            Import traffic data to correlate with AI mentions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground mt-2">
-            {status.google ? (
-              <p className="flex items-center text-emerald-600">
-                <CheckCircle2 className="w-4 h-4 mr-1" /> Ready to sync
-              </p>
-            ) : (
-              <p>Connect your Google account to access GA4 properties.</p>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter>
-          {status.google ? (
-            <Button
-              className="w-full"
-              variant="destructive"
-              onClick={handleDisconnectGoogle}
-              disabled={isDisconnecting}
-            >
-              {isDisconnecting ? "Disconnecting..." : "Disconnect Google"}
-            </Button>
-          ) : (
-            <Button
-              className="w-full"
-              variant="default"
-              onClick={handleConnectGoogle}
-            >
-              Connect with Google
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
-
-      {/* --- GOOGLE SEARCH CONSOLE --- */}
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl font-bold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-blue-500" />
-              Search Console
-            </div>
-            {status.google ? (
-              <Badge className="bg-emerald-500 text-white">Connected</Badge>
-            ) : (
-              <Badge variant="outline">Inactive</Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Track clicks and impressions from Search & AI Overviews.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground mt-2">
-            {status.google ? (
-              <p className="flex items-center text-emerald-600">
-                <CheckCircle2 className="w-4 h-4 mr-1" /> Ready to sync
-              </p>
-            ) : (
-              <p>Uses the same Google connection as Analytics.</p>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter>
-          {status.google ? (
-            <Button className="w-full" variant="outline" disabled={true}>
-              Connected via Google
-            </Button>
-          ) : (
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={handleConnectGoogle}
-            >
-              Connect with Google
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

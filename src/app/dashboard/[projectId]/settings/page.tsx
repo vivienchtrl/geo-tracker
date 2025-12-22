@@ -1,15 +1,9 @@
-import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { MembersTab } from "@/features/project/components/members-tab"
-import { KeywordsManager } from "@/features/keywords/components/keywords-manager"
-import { IcpManager } from "@/features/icp/components/icp-manager"
-import { Users, CreditCard, Database, Target, Settings as SettingsIcon, Globe } from "lucide-react"
+import { CreditCard, Globe } from "lucide-react"
 import { getProjectMembers, getPendingInvitations } from "@/backend/services/project-members.service"
-import { getKeywordsByProject } from "@/backend/services/keywords.service"
-import { getIcpProfilesByProject } from "@/backend/services/icp-profiles"
 import { getProjectWithRole } from "@/backend/services/project-service"
 import { getCurrentUser } from "@/backend/services/user-service"
 import { Input } from "@/components/ui/input"
@@ -36,11 +30,9 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   const { project, role } = projectData
 
   // Fetch Data in Parallel
-  const [membersRaw, invitationsRaw, keywordsData, icpData] = await Promise.all([
+  const [membersRaw, invitationsRaw] = await Promise.all([
     getProjectMembers(projectId),
-    getPendingInvitations(projectId),
-    getKeywordsByProject(projectId),
-    getIcpProfilesByProject(projectId)
+    getPendingInvitations(projectId)
   ])
 
   // Transform Members Data for UI
@@ -81,8 +73,6 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
           <div className="px-8 py-4 border-b border-dashed border-border/80 bg-muted/5">
             <TabsList className="bg-transparent border-dashed border border-border/60 p-1">
               <TabsTrigger value="general" className="uppercase text-[10px] tracking-widest font-bold px-8">General</TabsTrigger>
-              <TabsTrigger value="keywords" className="uppercase text-[10px] tracking-widest font-bold px-8">Keywords</TabsTrigger>
-              <TabsTrigger value="icp" className="uppercase text-[10px] tracking-widest font-bold px-8">ICP</TabsTrigger>
               <TabsTrigger value="team" className="uppercase text-[10px] tracking-widest font-bold px-8">Team</TabsTrigger>
               <TabsTrigger value="billing" className="uppercase text-[10px] tracking-widest font-bold px-8">Billing</TabsTrigger>
             </TabsList>
@@ -159,24 +149,6 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
               </div>
             </TabsContent>
 
-            {/* Keywords Tab */}
-            <TabsContent value="keywords" className="outline-none m-0">
-              <div className="min-h-full border-b border-dashed border-border/80">
-                <Suspense fallback={<SettingsSkeleton />}>
-                  <KeywordsManager initialKeywords={keywordsData} />
-                </Suspense>
-              </div>
-            </TabsContent>
-
-            {/* ICP Tab */}
-            <TabsContent value="icp" className="outline-none m-0">
-              <div className="min-h-full border-b border-dashed border-border/80">
-                <Suspense fallback={<SettingsSkeleton />}>
-                  <IcpManager initialIcpProfiles={icpData} />
-                </Suspense>
-              </div>
-            </TabsContent>
-
             {/* Team Tab */}
             <TabsContent value="team" className="outline-none m-0">
               <div className="min-h-full border-b border-dashed border-border/80">
@@ -221,15 +193,6 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
           </div>
         </Tabs>
       </div>
-    </div>
-  )
-}
-
-function SettingsSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-64 w-full" />
     </div>
   )
 }

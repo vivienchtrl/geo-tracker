@@ -13,13 +13,9 @@ export default async function DashboardPage() {
 
   const projects = await getUserProjects(user.id)
 
-  // If user has only one project, redirect directly to it
-  if (projects.length === 1) {
-    redirect(`/dashboard/${projects[0].project.id}`)
-  }
-
-  // If user has no projects, redirect to onboarding
-  if (projects.length === 0) {
+  // Only redirect to onboarding if it's a TRULY new user 
+  // (no projects AND no profile setup yet)
+  if (projects.length === 0 && !user.firstName) {
     redirect('/auth/onboarding')
   }
 
@@ -46,45 +42,63 @@ export default async function DashboardPage() {
 
       {/* Projects Grid Section */}
       <div className="flex-1 px-8 py-12">
-        <div className="grid gap-0 border border-dashed border-border/80 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map(({ project, role }) => (
-            <Link 
-              key={project.id} 
-              href={`/dashboard/${project.id}`}
-              className="group border-r border-b border-dashed border-border/80 last:border-r-0 lg:[&:nth-child(3n)]:border-r-0 md:[&:nth-child(2n)]:border-r-0"
-            >
-              <Card variant="bento" className="h-full border-0 transition-all duration-300 hover:bg-primary/5 group/card p-8">
-                <CardHeader className="p-0 pb-8">
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center border border-dashed border-primary/40 bg-primary/5 text-primary group-hover/card:border-primary/60 transition-colors">
-                      <Folder className="h-6 w-6" />
+        {projects.length > 0 ? (
+          <div className="grid gap-0 border border-dashed border-border/80 md:grid-cols-2 lg:grid-cols-3">
+            {projects.map(({ project, role }) => (
+              <Link 
+                key={project.id} 
+                href={`/dashboard/${project.id}`}
+                className="group border-r border-b border-dashed border-border/80 last:border-r-0 lg:nth-[3n]:border-r-0 md:nth-[2n]:border-r-0"
+              >
+                <Card variant="bento" className="h-full border-0 transition-all duration-300 hover:bg-primary/5 group/card p-8">
+                  <CardHeader className="p-0 pb-8">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-12 w-12 items-center justify-center border border-dashed border-primary/40 bg-primary/5 text-primary group-hover/card:border-primary/60 transition-colors">
+                        <Folder className="h-6 w-6" />
+                      </div>
+                      <Badge 
+                        variant={role === 'owner' ? 'default' : 'secondary'}
+                        className="text-[8px] uppercase font-black tracking-widest px-2"
+                      >
+                        {role}
+                      </Badge>
                     </div>
-                    <Badge 
-                      variant={role === 'owner' ? 'default' : 'secondary'}
-                      className="text-[8px] uppercase font-black tracking-widest px-2"
-                    >
-                      {role}
-                    </Badge>
-                  </div>
-                  <CardTitle className="mt-6 text-xl uppercase font-bold tracking-tight group-hover/card:text-primary transition-colors">{project.name}</CardTitle>
-                  <CardDescription className="line-clamp-1 font-mono text-[9px] uppercase tracking-widest mt-2 flex items-center gap-2">
-                    <Globe className="h-3 w-3 text-primary/60" />
-                    {project.url}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0 pt-4">
-                  <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-[0.2em] text-muted-foreground/60">
-                    <span className="flex items-center gap-2">
-                      <div className="h-1 w-1 rounded-full bg-border" />
-                      {role === 'owner' ? 'Administrator' : 'Collaborator'}
-                    </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-primary opacity-0 -translate-x-2 transition-all group-hover/card:opacity-100 group-hover/card:translate-x-0" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                    <CardTitle className="mt-6 text-xl uppercase font-bold tracking-tight group-hover/card:text-primary transition-colors">{project.name}</CardTitle>
+                    <CardDescription className="line-clamp-1 font-mono text-[9px] uppercase tracking-widest mt-2 flex items-center gap-2">
+                      <Globe className="h-3 w-3 text-primary/60" />
+                      {project.url}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0 pt-4">
+                    <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-[0.2em] text-muted-foreground/60">
+                      <span className="flex items-center gap-2">
+                        <div className="h-1 w-1 rounded-full bg-border" />
+                        {role === 'owner' ? 'Administrator' : 'Collaborator'}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 text-primary opacity-0 -translate-x-2 transition-all group-hover/card:opacity-100 group-hover/card:translate-x-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 border border-dashed border-border/80 bg-muted/5">
+            <div className="flex h-16 w-16 items-center justify-center border border-dashed border-border/60 bg-background text-muted-foreground/40 mb-6">
+              <Folder className="h-8 w-8" />
+            </div>
+            <h2 className="text-2xl font-bold uppercase tracking-tighter">No Active Projects</h2>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-3 mb-10 text-center max-w-[280px] leading-relaxed">
+              Your command center is currently empty. Initialize a project to begin monitoring.
+            </p>
+            <Button variant="dashed" className="uppercase text-[10px] font-bold tracking-widest px-10 h-12">
+              <Link href="/dashboard/projects/new" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create New Project
+              </Link>
+            </Button>
+          </div>
+        )}
 
         {/* Welcome Section */}
         <div className="mt-12">

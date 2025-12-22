@@ -19,6 +19,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { getBotInfo, isKnownAIProvider } from "@/features/tracking/utils/bot-detector";
+import { capturePageVisit } from "@/backend/services/tracking.service";
 
 // ============================================================
 // CONFIGURATION
@@ -81,6 +82,29 @@ function extractRequestInfo(request: NextRequest) {
  */
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const searchParams = request.nextUrl.searchParams;
+  const projectId = searchParams.get('p'); // ID du projet dans l'URL du script (ex: tracker.min.js?p=ID)
+
+  // ============================================================
+  // CAPTURE AUTOMATIQUE (Server-Side)
+  // Si un bot charge le script, on l'enregistre immédiatement
+  // ============================================================
+  if ((pathname.includes('tracker.js') || pathname.includes('tracker.min.js')) && projectId) {
+    const { userAgent, referer, ip } = extractRequestInfo(request);
+    
+    // On enregistre la visite en DB de manière asynchrone (non-bloquant)
+    capturePageVisit({
+      projectId,
+      eventType: 'page_view',
+      path: referer || 'external-site', // Le site où le bot a chargé le script
+      userAgent,
+      referrer: referer || undefined,
+      metadata: { 
+        detection_method: 'proxy_script_load',
+        note: 'Captured server-side when tracker script was requested'
+      }
+    }, ip).catch(err => console.error('[PROXY-SAVE-ERROR]', err));
+  }
 
   // ============================================================
   // STEP 1: Track requests with bot detection
