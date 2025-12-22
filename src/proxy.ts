@@ -18,7 +18,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { getBotInfo, isKnownAIProvider, isBot } from "@/features/tracking/utils/bot-detector";
+import { getBotInfo, isKnownAIProvider } from "@/features/tracking/utils/bot-detector";
 import { capturePageVisit, getProjectIdByDomain } from "@/backend/services/tracking.service";
 
 // ============================================================
@@ -95,28 +95,36 @@ export async function proxy(request: NextRequest) {
   }
 
   // 2. DÉTECTION ET CAPTURE AUTOMATIQUE (Server-Side)
-  const { userAgent, referer, ip } = extractRequestInfo(request);
-  const botDetected = isBot(userAgent);
+  const { userAgent, referer, ip, acceptLanguage } = extractRequestInfo(request);
+  const botInfo = getBotInfo(userAgent);
+  const botDetected = botInfo.botType !== null;
 
   // Si c'est un bot OU un asset de tracking, on capture
   const isTrackingAsset = pathname.includes('tracker') || pathname.includes('pixel');
 
   if (projectId && (botDetected || isTrackingAsset)) {
-    // On enregistre la visite en DB
-    // On utilise un try/catch pour ne jamais bloquer l'user si l'enregistrement échoue
-    capturePageVisit({
-      projectId,
-      eventType: 'page_view',
-      path: pathname || '/',
-      userAgent,
-      referrer: referer || undefined,
-      metadata: { 
-        detection_method: botDetected ? 'proxy_bot_detected' : 'proxy_asset_load',
-        asset_type: isTrackingAsset ? (pathname.includes('pixel') ? 'pixel' : 'script') : 'page',
-        domain: host,
-        isBot: botDetected
-      }
-    }, ip).catch(err => console.error('[PROXY-SAVE-ERROR]', err));
+    // ON UTILISE AWAIT ICI - CRUCIAL pour que Vercel Edge ne coupe pas la connexion
+    // avant que la base de données n'ait reçu l'enregistrement.
+    try {
+      await capturePageVisit({
+        projectId,
+        eventType: 'page_view',
+        path: pathname || '/',
+        userAgent,
+        referrer: referer || undefined,
+        acceptLanguage: acceptLanguage || undefined,
+        metadata: { 
+          detection_method: botDetected ? 'proxy_bot_universal' : 'proxy_asset_load',
+          asset_type: isTrackingAsset ? (pathname.includes('pixel') ? 'pixel' : 'script') : 'page',
+          domain: host,
+          isBot: botDetected,
+          note: botDetected ? 'Universal bot detection at proxy level' : 'Tracker asset request capture'
+        }
+      }, ip);
+      console.log(`[PROXY-CAPTURE] Success: ${botDetected ? botInfo.botName : 'Asset load'} for project ${projectId}`);
+    } catch (err) {
+      console.error('[PROXY-CAPTURE-ERROR]', err);
+    }
   }
 
   // ============================================================
@@ -124,8 +132,6 @@ export async function proxy(request: NextRequest) {
   // ============================================================
   if (shouldTrack(pathname)) {
     try {
-      const { userAgent, referer, acceptLanguage, ip } = extractRequestInfo(request);
-      const botInfo = getBotInfo(userAgent);
       const isAI = isKnownAIProvider(userAgent);
 
       // Log all requests
