@@ -83,25 +83,28 @@ function extractRequestInfo(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const searchParams = request.nextUrl.searchParams;
-  const projectId = searchParams.get('p'); // ID du projet dans l'URL du script (ex: tracker.min.js?p=ID)
+  
+  // HARMONISATION : On accepte 'p' OU 'projectId'
+  const projectId = searchParams.get('p') || searchParams.get('projectId'); 
 
-  // ============================================================
   // CAPTURE AUTOMATIQUE (Server-Side)
-  // Si un bot charge le script, on l'enregistre immédiatement
-  // ============================================================
-  if ((pathname.includes('tracker.js') || pathname.includes('tracker.min.js')) && projectId) {
+  // Si un bot charge le script ou le pixel, on l'enregistre immédiatement
+  const isTrackingAsset = pathname.includes('tracker') || pathname.includes('pixel');
+
+  if (isTrackingAsset && projectId) {
     const { userAgent, referer, ip } = extractRequestInfo(request);
     
     // On enregistre la visite en DB de manière asynchrone (non-bloquant)
     capturePageVisit({
       projectId,
       eventType: 'page_view',
-      path: referer || 'external-site', // Le site où le bot a chargé le script
+      path: referer || 'external-site', // Le site où le bot a chargé l'asset
       userAgent,
       referrer: referer || undefined,
       metadata: { 
-        detection_method: 'proxy_script_load',
-        note: 'Captured server-side when tracker script was requested'
+        detection_method: 'proxy_auto_capture',
+        asset_type: pathname.includes('pixel') ? 'pixel' : 'script',
+        note: `Captured server-side when ${pathname.includes('pixel') ? 'pixel' : 'script'} was requested`
       }
     }, ip).catch(err => console.error('[PROXY-SAVE-ERROR]', err));
   }
