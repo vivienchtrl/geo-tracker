@@ -22,11 +22,11 @@ import {
 const chartConfig = {
   sessions: {
     label: "Total Sessions",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   aiReferrals: {
     label: "AI Referrals",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
 

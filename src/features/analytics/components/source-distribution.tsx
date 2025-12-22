@@ -22,23 +22,23 @@ import { sourceData } from "@/components/dashboard/mock-data";
 const chartConfig = {
   documentation: {
     label: "Documentation",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   blog: {
     label: "Blog Posts",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
   "case-studies": {
     label: "Case Studies",
-    color: "hsl(var(--chart-3))",
+    color: "var(--chart-3)",
   },
   pricing: {
     label: "Pricing Page",
-    color: "hsl(var(--chart-4))",
+    color: "var(--chart-4)",
   },
   other: {
     label: "Other",
-    color: "hsl(var(--chart-5))",
+    color: "var(--chart-5)",
   },
 } satisfies ChartConfig;
 

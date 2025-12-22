@@ -19,11 +19,11 @@ import {
 const chartConfig = {
   count: {
     label: "Total Searches",
-    color: "hsl(var(--muted-foreground))",
+    color: "var(--muted-foreground)",
   },
   mentionedCount: {
     label: "Brand Mentions",
-    color: "hsl(var(--primary))",
+    color: "var(--primary)",
   },
 } satisfies ChartConfig;
 

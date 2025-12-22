@@ -19,7 +19,7 @@ import {
 const chartConfig = {
   count: {
     label: "Crawl Frequency",
-    color: "hsl(var(--primary))",
+    color: "var(--primary)",
   },
 } satisfies ChartConfig;
 

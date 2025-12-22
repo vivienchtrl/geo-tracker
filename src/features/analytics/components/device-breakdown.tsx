@@ -19,19 +19,19 @@ import {
 const chartConfig = {
   desktop: {
     label: "Desktop",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   mobile: {
     label: "Mobile",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
   tablet: {
     label: "Tablet",
-    color: "hsl(var(--chart-3))",
+    color: "var(--chart-3)",
   },
   unknown: {
     label: "Other",
-    color: "hsl(var(--chart-4))",
+    color: "var(--chart-4)",
   },
 } satisfies ChartConfig;
 
