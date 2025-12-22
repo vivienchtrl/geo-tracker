@@ -106,10 +106,21 @@ export async function proxy(request: NextRequest) {
     // ON UTILISE AWAIT ICI - CRUCIAL pour que Vercel Edge ne coupe pas la connexion
     // avant que la base de données n'ait reçu l'enregistrement.
     try {
+      // Pour les assets de tracking (script/pixel), on essaie de récupérer la vraie page via le Referer
+      let capturePath = pathname || '/';
+      if (isTrackingAsset && referer) {
+        try {
+          const refererUrl = new URL(referer);
+          capturePath = refererUrl.pathname;
+        } catch {
+          // Fallback au pathname de l'asset si le referer est invalide
+        }
+      }
+
       await capturePageVisit({
         projectId,
         eventType: 'page_view',
-        path: pathname || '/',
+        path: capturePath,
         userAgent,
         referrer: referer || undefined,
         acceptLanguage: acceptLanguage || undefined,
@@ -118,10 +129,11 @@ export async function proxy(request: NextRequest) {
           asset_type: isTrackingAsset ? (pathname.includes('pixel') ? 'pixel' : 'script') : 'page',
           domain: host,
           isBot: botDetected,
+          original_path: pathname, // On garde trace du path original de l'asset
           note: botDetected ? 'Universal bot detection at proxy level' : 'Tracker asset request capture'
         }
       }, ip);
-      console.log(`[PROXY-CAPTURE] Success: ${botDetected ? botInfo.botName : 'Asset load'} for project ${projectId}`);
+      console.log(`[PROXY-CAPTURE] Success: ${botDetected ? botInfo.botName : 'Asset load'} for project ${projectId} on ${capturePath}`);
     } catch (err) {
       console.error('[PROXY-CAPTURE-ERROR]', err);
     }

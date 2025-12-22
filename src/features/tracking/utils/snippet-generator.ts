@@ -27,7 +27,10 @@ export interface SnippetOptions {
  * @returns HTML snippet (1 line)
  */
 export function generateRobustSnippet({ projectId, baseUrl }: SnippetOptions): string {
-  return `<script src="${baseUrl}/tracker.min.js?p=${projectId}"></script>`;
+  return `<!-- Geo Tracker -->
+<script src="${baseUrl}/tracker.min.js?p=${projectId}" async></script>
+<noscript><img src="${baseUrl}/api/tracking/pixel?p=${projectId}&source=noscript" style="display:none;" alt="" /></noscript>
+<!-- End Geo Tracker -->`;
 }
 
 /**
