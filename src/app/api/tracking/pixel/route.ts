@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get("projectId");
+    const projectId = searchParams.get("projectId") || searchParams.get("p");
     const source = searchParams.get("source") || "unknown";
 
     // Extract headers for diagnostics
