@@ -1,8 +1,9 @@
 import { db } from "@/backend/db/db"
 import { project, users, keywords, icpProfiles, aiSearch, searchConsoleMetrics, analyticsMetrics, trafficSources, projectMembers } from "@/backend/db/tables/schema"
-import { eq, desc, and, gte, or } from "drizzle-orm"
+import { eq, desc, and, gte } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 import type { User, Project, Keyword, IcpProfile, AiSearch, SearchConsoleMetric, AnalyticsMetric, TrafficSource } from "@/types/db"
+import { getTrafficByDevice, getTrafficByLocation, getTrafficByReferrer, getBotActivity, getAISearchStats, getTrafficBySocial } from "./analytics.service"
 
 export type DashboardContext = {
   user: User
@@ -18,6 +19,14 @@ export type DashboardAnalytics = {
   gscHistory: SearchConsoleMetric[]
   analyticsHistory: AnalyticsMetric[]
   trafficSources: TrafficSource[]
+  // Tracker-based detailed analytics
+  deviceBreakdown: Awaited<ReturnType<typeof getTrafficByDevice>>
+  locationBreakdown: Awaited<ReturnType<typeof getTrafficByLocation>>
+  cityBreakdown: Awaited<ReturnType<typeof getTrafficByLocation>>
+  referrerBreakdown: Awaited<ReturnType<typeof getTrafficByReferrer>>
+  socialBreakdown: Awaited<ReturnType<typeof getTrafficBySocial>>
+  botActivity: Awaited<ReturnType<typeof getBotActivity>>
+  aiSearchStats: Awaited<ReturnType<typeof getAISearchStats>>
 }
 
 /**
@@ -134,7 +143,7 @@ export const getDashboardAnalytics = async (projectId: string): Promise<Dashboar
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       const dateStr = thirtyDaysAgo.toISOString().split('T')[0] // YYYY-MM-DD
 
-      const [gsc, analytics, traffic] = await Promise.all([
+      const [gsc, analytics, traffic, device, location, city, referrers, social, bots, aiStats] = await Promise.all([
         db.query.searchConsoleMetrics.findMany({
           where: and(
             eq(searchConsoleMetrics.projectId, projectId),
@@ -154,19 +163,34 @@ export const getDashboardAnalytics = async (projectId: string): Promise<Dashboar
             eq(trafficSources.projectId, projectId),
             gte(trafficSources.date, dateStr)
           )
-        })
+        }),
+        // Detail calls to our new analytics service
+        getTrafficByDevice(projectId, 30),
+        getTrafficByLocation(projectId, 'country', 30),
+        getTrafficByLocation(projectId, 'city', 30),
+        getTrafficByReferrer(projectId, 30),
+        getTrafficBySocial(projectId, 30),
+        getBotActivity(projectId, 30),
+        getAISearchStats(projectId, 30)
       ])
 
       return {
         gscHistory: gsc,
         analyticsHistory: analytics,
-        trafficSources: traffic
+        trafficSources: traffic,
+        deviceBreakdown: device,
+        locationBreakdown: location,
+        cityBreakdown: city,
+        referrerBreakdown: referrers,
+        socialBreakdown: social,
+        botActivity: bots,
+        aiSearchStats: aiStats
       }
     },
     [`dashboard-analytics-${projectId}`],
     {
       revalidate: 3600,
-      tags: [`dashboard-analytics-${projectId}`, 'dashboard', 'analytics']
+      tags: [`dashboard-analytics-${projectId}`, 'dashboard', 'analytics', 'page-visits', 'ai-search']
     }
   )()
 }

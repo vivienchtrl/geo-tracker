@@ -76,6 +76,17 @@ export type DashboardMetrics = {
   }[]
   keywords: KeywordData[]
   searchDetails: SearchDetail[]
+  // Detailed Analytics (from Geo-Tracker)
+  deviceBreakdown?: { deviceType: string; count: number }[]
+  locationBreakdown?: { name: string; code?: string; count: number }[]
+  cityBreakdown?: { name: string; count: number }[]
+  referrerBreakdown?: { referrer: string; count: number }[]
+  socialBreakdown?: { referrer: string; count: number }[]
+  botActivity?: { botName: string; botType: string; count: number }[]
+  aiSearchStats?: { 
+    mentions: { date: string; count: number; mentionedCount: number }[]
+    sentiment: { label: string; count: number }[]
+  }
 }
 
 /**
@@ -112,8 +123,11 @@ async function getAiMetricsData(projectId: string) {
  * Get dashboard data for a specific project
  */
 export async function getDashboardDataForProject(projectId: string): Promise<DashboardMetrics> {
-  // Fetch AI-specific data
-  const { keywordsList, aiSearchList, projectUrl, crawlerVisits } = await getAiMetricsData(projectId)
+  // Fetch AI-specific data and detailed analytics in parallel
+  const [{ keywordsList, aiSearchList, projectUrl, crawlerVisits }, trackerAnalytics] = await Promise.all([
+    getAiMetricsData(projectId),
+    getDashboardAnalytics(projectId)
+  ])
 
   // Extract project hostname for comparison
   let projectHostname = ''
@@ -321,10 +335,47 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
       source: (v.metadata as { source?: string })?.source || 'javascript'
     })),
     keywords: keywordsData,
-    searchDetails
+    searchDetails,
+    // Add detailed analytics from tracker
+    deviceBreakdown: trackerAnalytics.deviceBreakdown.map((d) => ({
+      deviceType: d.deviceType || 'unknown',
+      count: d.count
+    })),
+    locationBreakdown: trackerAnalytics.locationBreakdown.map((l) => ({
+      name: l.name || 'unknown',
+      code: l.code || undefined,
+      count: l.count
+    })),
+    cityBreakdown: trackerAnalytics.cityBreakdown.map((c) => ({
+      name: c.name || 'unknown',
+      count: c.count
+    })),
+    referrerBreakdown: trackerAnalytics.referrerBreakdown.map((r) => ({
+      referrer: r.referrer || 'unknown',
+      count: r.count
+    })),
+    socialBreakdown: trackerAnalytics.socialBreakdown.map((s) => ({
+      referrer: s.referrer || 'unknown',
+      count: s.count
+    })),
+    botActivity: trackerAnalytics.botActivity.map((b) => ({
+      botName: b.botName || 'unknown',
+      botType: b.botType || 'unknown',
+      count: b.count
+    })),
+    aiSearchStats: {
+      mentions: trackerAnalytics.aiSearchStats.mentions.map((m) => ({
+        date: m.date,
+        count: m.count,
+        mentionedCount: m.mentionedCount
+      })),
+      sentiment: trackerAnalytics.aiSearchStats.sentiment.map((s) => ({
+        label: s.label || 'unknown',
+        count: s.count
+      }))
+    }
   }
 }
-
 /**
  * Get analytics data (GSC, GA4, Traffic) for the dashboard
  * This is separate from AI metrics

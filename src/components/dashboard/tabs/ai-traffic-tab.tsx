@@ -2,10 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrafficSource } from "@/types/db"
-import { DashboardMetrics } from "@/app/dashboard/actions"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts"
-import { CompetitorsChart } from "../charts/competitors-chart"
-import { RecentMentionsTable } from "../charts/recent-mentions-table"
+import { DashboardMetrics } from "@/app/dashboard/[projectId]/actions"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import { CompetitorsChart } from "@/features/keywords/components/competitors-chart"
+import { RecentMentionsTable } from "@/features/mentions/components/recent-mentions-table"
+import { BotActivityChart } from "@/features/analytics/components/bot-activity-chart"
+import { AISearchMetricsChart } from "@/features/analytics/components/ai-search-metrics-chart"
 
 interface AITrafficTabProps {
   aiTraffic: TrafficSource[]
@@ -14,7 +16,7 @@ interface AITrafficTabProps {
 
 export function AITrafficTab({ aiTraffic, aiMetrics }: AITrafficTabProps) {
   const trafficBySource = aiTraffic.reduce((acc, curr) => {
-    const existing = acc.find((item: { source: any }) => item.source === curr.source)
+    const existing = acc.find((item: { source: string }) => item.source === curr.source)
     if (existing) {
       existing.visits += (curr.visits || 0)
     } else {
@@ -26,11 +28,21 @@ export function AITrafficTab({ aiTraffic, aiMetrics }: AITrafficTabProps) {
 
   return (
     <div className="flex flex-col gap-0 min-h-full">
+      {/* AI Search Metrics & Bot Activity */}
+      <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
+        <div className="lg:col-span-8 border-r border-dashed border-border/80">
+          <AISearchMetricsChart data={aiMetrics.aiSearchStats || { mentions: [], sentiment: [] }} />
+        </div>
+        <div className="lg:col-span-4">
+          <BotActivityChart data={aiMetrics.botActivity || []} />
+        </div>
+      </div>
+
       <div className="grid gap-0 md:grid-cols-2 border-b border-dashed border-border/80">
         <Card variant="bento" className="border-0 border-r border-dashed border-border/80 bg-transparent px-8 py-8 h-full">
             <CardHeader className="px-0 pb-6">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">AI Traffic Sources</CardTitle>
-                <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Visits coming from LLM & AI Engines</CardDescription>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">AI Referrer Sources</CardTitle>
+                <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Visits coming from LLM & AI Engines (GA4)</CardDescription>
             </CardHeader>
             <CardContent className="px-0">
                 <div className="h-[350px]">

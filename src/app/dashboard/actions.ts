@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { Keyword } from '../../../supabase/functions/scan-ai-mentions/actions/keywords'
+import { getDashboardAnalytics } from '@/backend/services/dashboard.service'
 
 export type KeywordData = {
   id: string
@@ -67,7 +68,16 @@ export type DashboardMetrics = {
     createdAt: string
   }[]
   keywords: KeywordData[]
-  searchDetails: SearchDetail[] // Adding this to support detailed view per search
+  searchDetails: SearchDetail[] 
+  // Detailed Analytics (from Geo-Tracker)
+  deviceBreakdown?: { deviceType: string; count: number }[]
+  locationBreakdown?: { name: string; code?: string; count: number }[]
+  referrerBreakdown?: { referrer: string; count: number }[]
+  botActivity?: { botName: string; botType: string; count: number }[]
+  aiSearchStats?: { 
+    mentions: { date: string; count: number; mentionedCount: number }[]
+    sentiment: { label: string; count: number }[]
+  }
 }
 
 export async function getDashboardData(): Promise<DashboardMetrics> {
@@ -103,9 +113,8 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
   const project = projects[0]
   const projectUrl = new URL(project.url).hostname.replace('www.', '')
 
-  // 2. Fetch AI Search results and Keywords
-  // Parallel fetch for better performance
-  const [scansResult, keywordsResult] = await Promise.all([
+  // 2. Fetch Detailed Analytics (Tracker) & AI Search results
+  const [scansResult, keywordsResult, trackerAnalytics] = await Promise.all([
     supabase
       .from('ai_search')
       .select('*')
@@ -115,7 +124,8 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
       .from('keywords')
       .select('*')
       .eq('project_id', project.id)
-      .eq('is_active', true)
+      .eq('is_active', true),
+    getDashboardAnalytics(project.id)
   ])
 
   const scans = scansResult.data || []
@@ -371,6 +381,36 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     competitors,
     recentMentions,
     keywords: keywordsData,
-    searchDetails
+    searchDetails,
+    // Add detailed analytics from tracker
+    deviceBreakdown: trackerAnalytics.deviceBreakdown.map((d) => ({
+      deviceType: d.deviceType || '',
+      count: d.count
+    })),
+    locationBreakdown: trackerAnalytics.locationBreakdown.map((l) => ({
+      name: l.name || '',
+      code: l.code || undefined,
+      count: l.count
+    })),
+    referrerBreakdown: trackerAnalytics.referrerBreakdown.map((r) => ({
+      referrer: r.referrer || '',
+      count: r.count
+    })),
+    botActivity: trackerAnalytics.botActivity.map((b) => ({
+      botName: b.botName || '',
+      botType: b.botType || '',
+      count: b.count
+    })),
+    aiSearchStats: {
+      mentions: trackerAnalytics.aiSearchStats.mentions.map((m) => ({
+        date: m.date,
+        count: m.count,
+        mentionedCount: m.mentionedCount
+      })),
+      sentiment: trackerAnalytics.aiSearchStats.sentiment.map((s) => ({
+        label: s.label || '',
+        count: s.count
+      }))
+    }
   }
 }

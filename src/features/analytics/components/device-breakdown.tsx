@@ -1,9 +1,7 @@
-
 "use client";
 
 import * as React from "react";
 import { Label, Pie, PieChart } from "recharts";
-
 import {
   Card,
   CardContent,
@@ -17,41 +15,53 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { sourceData } from "../mock-data";
 
 const chartConfig = {
-  documentation: {
-    label: "Documentation",
+  desktop: {
+    label: "Desktop",
     color: "hsl(var(--chart-1))",
   },
-  blog: {
-    label: "Blog Posts",
+  mobile: {
+    label: "Mobile",
     color: "hsl(var(--chart-2))",
   },
-  "case-studies": {
-    label: "Case Studies",
+  tablet: {
+    label: "Tablet",
     color: "hsl(var(--chart-3))",
   },
-  pricing: {
-    label: "Pricing Page",
-    color: "hsl(var(--chart-4))",
-  },
-  other: {
+  unknown: {
     label: "Other",
-    color: "hsl(var(--chart-5))",
+    color: "hsl(var(--chart-4))",
   },
 } satisfies ChartConfig;
 
-export function SourceDistributionChart() {
-  const totalCitations = React.useMemo(() => {
-    return sourceData.reduce((acc, curr) => acc + curr.count, 0);
-  }, []);
+interface DeviceData {
+  deviceType: string | null;
+  count: number;
+}
+
+interface DeviceBreakdownProps {
+  data: DeviceData[];
+}
+
+export function DeviceBreakdown({ data }: DeviceBreakdownProps) {
+  const chartData = React.useMemo(() => {
+    return data.map((item) => ({
+      device: item.deviceType || "unknown",
+      count: item.count,
+      fill: `var(--color-${item.deviceType || "unknown"})`,
+    }));
+  }, [data]);
+
+  const totalVisitors = React.useMemo(() => {
+    return data.reduce((acc, curr) => acc + curr.count, 0);
+  }, [data]);
 
   return (
     <Card variant="bento" className="flex flex-col border-0 bg-transparent px-8 py-8 h-full">
       <CardHeader className="px-0 pb-6 items-center">
-        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Top Cited Sources</CardTitle>
-        <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Distribution of content types cited by AI</CardDescription>
+        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">Device Distribution</CardTitle>
+        <CardDescription className="text-[9px] uppercase tracking-widest mt-1">Traffic by device category</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 px-0 pb-0 flex items-center justify-center">
         <ChartContainer
@@ -64,9 +74,9 @@ export function SourceDistributionChart() {
               content={<ChartTooltipContent hideLabel className="rounded-none border-dashed" />}
             />
             <Pie
-              data={sourceData}
+              data={chartData}
               dataKey="count"
-              nameKey="source"
+              nameKey="device"
               innerRadius={70}
               strokeWidth={0}
             >
@@ -85,14 +95,14 @@ export function SourceDistributionChart() {
                           y={viewBox.cy}
                           className="fill-foreground text-4xl font-black tracking-tighter"
                         >
-                          {totalCitations.toLocaleString()}
+                          {totalVisitors.toLocaleString()}
                         </tspan>
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 24}
                           className="fill-muted-foreground text-[10px] uppercase font-bold tracking-[0.2em]"
                         >
-                          CITATIONS
+                          VISITORS
                         </tspan>
                       </text>
                     );
@@ -106,9 +116,4 @@ export function SourceDistributionChart() {
     </Card>
   );
 }
-
-
-
-
-
 

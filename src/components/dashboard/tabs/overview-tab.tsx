@@ -1,9 +1,9 @@
-import { OverviewMetrics } from "@/components/dashboard/charts/overview-metrics";
-import { VisibilityChart } from "@/components/dashboard/charts/visibility-chart";
-import { CompetitorsChart } from "@/components/dashboard/charts/competitors-chart";
-import { RecentMentionsTable } from "@/components/dashboard/charts/recent-mentions-table";
-import { CrawlerLogsTable } from "@/components/dashboard/charts/crawler-logs-table";
-import { KeywordsTable } from "@/components/dashboard/charts/keywords-table";
+import { OverviewMetrics } from "@/features/analytics/components/overview-metrics";
+import { VisibilityChart } from "@/features/keywords/components/visibility-chart";
+import { CompetitorsChart } from "@/features/keywords/components/competitors-chart";
+import { RecentMentionsTable } from "@/features/mentions/components/recent-mentions-table";
+import { CrawlerLogsTable } from "@/features/crawler/components/crawler-logs-table";
+import { KeywordsTable } from "@/features/keywords/components/keywords-table";
 import { DashboardMetrics } from "@/app/dashboard/actions";
 
 interface OverviewTabProps {
