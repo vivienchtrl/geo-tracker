@@ -2,117 +2,65 @@
 
 import { db } from '@/backend/db/db'
 import { keywords, aiSearch, project, pageVisits } from '@/backend/db/tables/schema'
-import { eq, desc, isNotNull, and } from 'drizzle-orm'
+import { eq, desc, isNotNull, and, gte, lte, ilike, SQL } from 'drizzle-orm'
 import { getDashboardAnalytics } from '@/backend/services/dashboard.service'
 import type { AiSearch, Keyword, PageVisit } from '@/types/db'
-
-export type KeywordData = {
-  id: string
-  term: string
-  totalScans: number
-  visibilityRate: number
-  avgRank: number
-  sentimentScore: number
-  competitors: {
-    domain: string
-    count: number
-    avgRank: number
-  }[]
-  history: {
-    date: string
-    rank: number
-    isMentioned: boolean
-  }[]
-}
-
-export type SearchDetail = {
-  id: string
-  query: string
-  engine: string
-  response: string
-  sentimentLabel: string
-  rank: number
-  isMentioned: boolean
-  urlsFound: {
-    title: string
-    link: string
-    rank: number
-  }[]
-  createdAt: string
-}
-
-export type DashboardMetrics = {
-  overview: {
-    totalScans: number
-    mentionCount: number
-    visibilityRate: number
-    averageRank: number
-    sentimentScore: number
-  }
-  models: {
-    name: string
-    total: number
-    mentioned: number
-  }[]
-  competitors: {
-    domain: string
-    count: number
-    avgRank: number
-  }[]
-  recentMentions: {
-    id: string
-    query: string
-    engine: string
-    response: string
-    sentimentLabel: string
-    createdAt: string
-  }[]
-  crawlerLogs: {
-    id: string
-    botName: string
-    path: string
-    createdAt: string
-    source: string
-  }[]
-  keywords: KeywordData[]
-  searchDetails: SearchDetail[]
-  // Detailed Analytics (from Geo-Tracker)
-  deviceBreakdown?: { deviceType: string; count: number }[]
-  locationBreakdown?: { name: string; code?: string; count: number }[]
-  cityBreakdown?: { name: string; count: number }[]
-  referrerBreakdown?: { referrer: string; count: number }[]
-  socialBreakdown?: { referrer: string; count: number }[]
-  botActivity?: { botName: string; botType: string; count: number }[]
-  aiSearchStats?: { 
-    mentions: { date: string; count: number; mentionedCount: number }[]
-    sentiment: { label: string; count: number }[]
-  }
-}
+import { DashboardFilters, getDateRangeDate, DashboardMetrics, KeywordData } from '@/types/dashboard'
 
 /**
  * Get AI metrics data for a specific project
  * Fetches aiSearch and keywords directly
  */
-async function getAiMetricsData(projectId: string) {
+async function getAiMetricsData(projectId: string, filters: DashboardFilters = {}) {
+  // Build AI Search filters
+  const aiConditions: SQL[] = [eq(aiSearch.projectId, projectId)];
+
+  // Date Range
+  if (filters.startDate && filters.endDate) {
+    aiConditions.push(and(gte(aiSearch.createdAt, filters.startDate), lte(aiSearch.createdAt, filters.endDate))!);
+  } else {
+    const cutoff = getDateRangeDate(filters.dateRange || '30d');
+    aiConditions.push(gte(aiSearch.createdAt, cutoff)!);
+  }
+
+  // AI Specific Filters
+  if (filters.llmModel) {
+    aiConditions.push(ilike(aiSearch.modelUsed, `%${filters.llmModel}%`));
+  }
+  if (filters.searchQuery) {
+    aiConditions.push(ilike(aiSearch.query, `%${filters.searchQuery}%`));
+  } 
+
+  // Build Crawler Filters
+  // Note: Crawler logs come from pageVisits where isBot is NOT null
+  const crawlerConditions: SQL[] = [
+    eq(pageVisits.projectId, projectId),
+    isNotNull(pageVisits.isBot)
+  ];
+  
+  if (filters.startDate && filters.endDate) {
+    crawlerConditions.push(and(gte(pageVisits.createdAt, filters.startDate), lte(pageVisits.createdAt, filters.endDate))!);
+  } else {
+    const cutoff = getDateRangeDate(filters.dateRange || '30d');
+    crawlerConditions.push(gte(pageVisits.createdAt, cutoff)!);
+  }
+
   const [keywordsList, aiSearchList, projectData, crawlerVisits] = await Promise.all([
     db.query.keywords.findMany({
       where: eq(keywords.projectId, projectId),
       orderBy: desc(keywords.createdAt)
     }),
     db.query.aiSearch.findMany({
-      where: eq(aiSearch.projectId, projectId),
+      where: and(...aiConditions),
       orderBy: desc(aiSearch.createdAt)
     }),
     db.query.project.findFirst({
       where: eq(project.id, projectId)
     }),
     db.query.pageVisits.findMany({
-      where: and(
-        eq(pageVisits.projectId, projectId),
-        isNotNull(pageVisits.isBot)
-      ),
+      where: and(...crawlerConditions),
       orderBy: desc(pageVisits.createdAt),
-      limit: 20
+      limit: 50 // Increased limit to show more logs
     })
   ])
 
@@ -122,11 +70,11 @@ async function getAiMetricsData(projectId: string) {
 /**
  * Get dashboard data for a specific project
  */
-export async function getDashboardDataForProject(projectId: string): Promise<DashboardMetrics> {
+export async function getDashboardDataForProject(projectId: string, filters: DashboardFilters = {}): Promise<DashboardMetrics> {
   // Fetch AI-specific data and detailed analytics in parallel
   const [{ keywordsList, aiSearchList, projectUrl, crawlerVisits }, trackerAnalytics] = await Promise.all([
-    getAiMetricsData(projectId),
-    getDashboardAnalytics(projectId)
+    getAiMetricsData(projectId, filters),
+    getDashboardAnalytics(projectId, filters)
   ])
 
   // Extract project hostname for comparison
@@ -179,7 +127,6 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
       if (scan.isMentioned) {
         kwStats.mentions++
         kwStats.totalRank += (scan.rank || 0)
-        kwStats.totalSentiment += (scan.sentimentScore || 0)
       }
       kwStats.history.push({
         date: scan.createdAt?.toISOString() || new Date().toISOString(),
@@ -244,8 +191,9 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
     query: s.query,
     engine: s.modelUsed?.split(' (ICP:')[0] || s.modelUsed || 'Unknown',
     response: s.response || '',
-    sentimentLabel: s.sentimentLabel || 'neutral',
-    createdAt: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : ''
+    createdAt: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '',
+    rank: s.rank || 0,
+    isMentioned: s.isMentioned || false
   }))
 
   const searchDetails = aiSearchList.slice(0, 50).map((s: AiSearch) => {
@@ -255,7 +203,6 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
       query: s.query,
       engine: s.modelUsed?.split(' (ICP:')[0] || s.modelUsed || 'Unknown',
       response: s.response || '',
-      sentimentLabel: s.sentimentLabel || 'neutral',
       rank: s.rank || 0,
       isMentioned: s.isMentioned || false,
       urlsFound: Array.isArray(urlsFound) ? urlsFound.map((u) => {
@@ -279,8 +226,7 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
         term: k.term,
         totalScans: 0,
         visibilityRate: 0,
-        avgRank: 0,
-        sentimentScore: 0,
+        avgRank: 0, 
         competitors: [],
         history: []
       }
@@ -301,7 +247,6 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
       totalScans: stats.totalScans,
       visibilityRate: stats.totalScans > 0 ? Math.round((stats.mentions / stats.totalScans) * 100) : 0,
       avgRank: stats.mentions > 0 ? Math.round((stats.totalRank / stats.mentions) * 10) / 10 : 0,
-      sentimentScore: stats.mentions > 0 ? Math.round(stats.totalSentiment / stats.mentions) : 0,
       competitors: topCompetitors,
       history: stats.history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     }
@@ -320,9 +265,6 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
       averageRank: mentionCount > 0 
         ? Math.round((mentionedScans.reduce((acc: number, curr: AiSearch) => acc + (curr.rank || 0), 0) / mentionCount) * 10) / 10 
         : 0,
-      sentimentScore: mentionCount > 0 
-        ? Math.round(mentionedScans.reduce((acc: number, curr: AiSearch) => acc + (curr.sentimentScore || 0), 0) / mentionCount) 
-        : 0
     },
     models,
     competitors,
@@ -376,10 +318,11 @@ export async function getDashboardDataForProject(projectId: string): Promise<Das
     }
   }
 }
+
 /**
  * Get analytics data (GSC, GA4, Traffic) for the dashboard
  * This is separate from AI metrics
  */
-export async function getAnalyticsDataForProject(projectId: string) {
-  return getDashboardAnalytics(projectId)
+export async function getAnalyticsDataForProject(projectId: string, filters: DashboardFilters = {}) {
+  return getDashboardAnalytics(projectId, filters)
 }

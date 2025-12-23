@@ -11,8 +11,6 @@ export const aiSearch = pgTable("ai_search", {
     modelUsed: text("model_used").notNull(),
     urlsFound: jsonb("urls_found"),
     isMentioned: boolean("is_mentioned").default(false),
-    sentimentScore: integer("sentiment_score"),
-    sentimentLabel: text("sentiment_label"),
     rank: integer("rank"),
     createdAt: timestamp("created_at").defaultNow(),
 });

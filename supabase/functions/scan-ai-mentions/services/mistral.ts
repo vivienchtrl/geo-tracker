@@ -22,24 +22,8 @@ User Query: ${term}
 `
 
   try {
-    // 1. Try with Web Search Tool
-    // Interface for Mistral chat completion with tools
-    interface MistralChatWithTools {
-      complete(params: {
-        model: string;
-        messages: Array<{ role: string; content: string }>;
-        tools?: Array<{ type: string }>;
-        toolChoice?: string;
-      }): Promise<{
-        choices: Array<{
-          message: {
-            content: string | null
-          }
-        }>
-      }>
-    }
-
-    const response = await (mistral.chat as unknown as MistralChatWithTools).complete({
+    // Mistral native web search tool
+    const response = await (mistral.chat as unknown as { complete: (options: { model: string; messages: { role: string; content: string }[]; tools: { type: string }[]; toolChoice: string }) => Promise<{ choices: { message: { content: string } }[] }> }).complete({
       model: model,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -54,31 +38,12 @@ User Query: ${term}
     return {
       responseText: typeof responseContent === 'string' ? responseContent : JSON.stringify(responseContent || ""),
       modelUsed: model,
-      extractedUrls: []
+      extractedUrls: [] // Mistral doesn't return structured URLs in response yet
     }
 
   } catch (error) {
-    // 2. Fallback: Standard Generation
-    console.warn(`Mistral Native Web Search failed/unsupported: ${error}`)
-    
-    try {
-       const fallbackResponse = await mistral.chat.complete({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: finalPrompt }
-        ]
-      })
-      
-      const responseContent = fallbackResponse.choices?.[0]?.message?.content
-      return {
-        responseText: typeof responseContent === 'string' ? responseContent : JSON.stringify(responseContent || ""),
-        modelUsed: model,
-        extractedUrls: []
-      }
-    } catch (fallbackError) {
-       console.error("Mistral fallback failed:", fallbackError)
-       throw fallbackError
-    }
+    console.error(`Mistral search failed:`, error)
+    throw error
   }
 }
+

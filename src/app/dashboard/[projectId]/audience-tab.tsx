@@ -3,7 +3,7 @@
 import { DeviceBreakdown } from "@/features/analytics/components/device-breakdown";
 import { GeoDistribution } from "@/features/analytics/components/geo-distribution";
 import { ReferrerBreakdown } from "@/features/analytics/components/referrer-breakdown";
-import { DashboardMetrics } from "../actions";
+import { DashboardMetrics } from "@/types/dashboard";
 
 interface AudienceTabProps {
   data: DashboardMetrics;
@@ -31,7 +31,7 @@ export function AudienceTab({ data }: AudienceTabProps) {
         </div>
         <div className="lg:col-span-6">
           <GeoDistribution 
-            data={data.locationBreakdown || []} 
+            data={data.cityBreakdown || []} 
             title="Top Cities"
             description="Visitors by city (Tracker)"
           />
@@ -41,7 +41,7 @@ export function AudienceTab({ data }: AudienceTabProps) {
       <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
         <div className="lg:col-span-12">
           <ReferrerBreakdown 
-            data={data.referrerBreakdown?.filter((r) => r.referrer?.includes('social')) || []} 
+            data={data.socialBreakdown || []} 
             title="Social Channels"
             description="Traffic from social media networks"
           />
@@ -50,4 +50,3 @@ export function AudienceTab({ data }: AudienceTabProps) {
     </div>
   );
 }
-

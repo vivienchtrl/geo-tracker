@@ -4,7 +4,7 @@ import { CompetitorsChart } from "@/features/keywords/components/competitors-cha
 import { RecentMentionsTable } from "@/features/mentions/components/recent-mentions-table";
 import { CrawlerLogsTable } from "@/features/crawler/components/crawler-logs-table";
 import { KeywordsTable } from "@/features/keywords/components/keywords-table";
-import { DashboardMetrics } from "@/app/dashboard/actions";
+import { DashboardMetrics } from "@/types/dashboard";
 
 interface OverviewTabProps {
   data: DashboardMetrics;

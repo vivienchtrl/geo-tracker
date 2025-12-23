@@ -1,8 +1,9 @@
 import { db } from "@/backend/db/db"
 import { project, users, keywords, icpProfiles, aiSearch, searchConsoleMetrics, analyticsMetrics, trafficSources, projectMembers } from "@/backend/db/tables/schema"
-import { eq, desc, and, gte } from "drizzle-orm"
+import { eq, desc, and, gte, lte } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 import type { User, Project, Keyword, IcpProfile, AiSearch, SearchConsoleMetric, AnalyticsMetric, TrafficSource } from "@/types/db"
+import { DashboardFilters, getDateRangeDate } from "@/types/dashboard"
 import { getTrafficByDevice, getTrafficByLocation, getTrafficByReferrer, getBotActivity, getAISearchStats, getTrafficBySocial } from "./analytics.service"
 
 export type DashboardContext = {
@@ -138,43 +139,53 @@ export const getDashboardContext = async (userId: string): Promise<DashboardCont
  * Fetches analytics data (GSC, GA4, Traffic Sources) for the dashboard.
  * Cached separately as it might update less frequently or be heavier.
  */
-export const getDashboardAnalytics = async (projectId: string): Promise<DashboardAnalytics> => {
+export const getDashboardAnalytics = async (projectId: string, filters: DashboardFilters = {}): Promise<DashboardAnalytics> => {
+  const cacheKey = `dashboard-analytics-${projectId}-${JSON.stringify(filters)}`;
+  
   return await unstable_cache(
     async () => {
-      // Calculate date 30 days ago
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      const dateStr = thirtyDaysAgo.toISOString().split('T')[0] // YYYY-MM-DD
+      // Determine date range for pre-aggregated tables (GSC, GA4)
+      const dateEnd = filters.endDate || new Date();
+      const dateStart = filters.startDate || getDateRangeDate(filters.dateRange || '30d');
+      const dateStartStr = dateStart.toISOString().split('T')[0];
+      const dateEndStr = dateEnd.toISOString().split('T')[0];
 
+      // GSC & Analytics Filters
+      // Note: These tables only have 'date' and 'project_id' usually.
+      // We can only filter by date here unless we add more columns.
+      
       const [gsc, analytics, traffic, device, location, city, referrers, social, bots, aiStats] = await Promise.all([
         db.query.searchConsoleMetrics.findMany({
           where: and(
             eq(searchConsoleMetrics.projectId, projectId),
-            gte(searchConsoleMetrics.date, dateStr)
+            gte(searchConsoleMetrics.date, dateStartStr),
+            lte(searchConsoleMetrics.date, dateEndStr)
           ),
           orderBy: (t, { asc }) => asc(t.date)
         }),
         db.query.analyticsMetrics.findMany({
           where: and(
             eq(analyticsMetrics.projectId, projectId),
-            gte(analyticsMetrics.date, dateStr)
+            gte(analyticsMetrics.date, dateStartStr),
+            lte(analyticsMetrics.date, dateEndStr)
           ),
           orderBy: (t, { asc }) => asc(t.date)
         }),
         db.query.trafficSources.findMany({
           where: and(
             eq(trafficSources.projectId, projectId),
-            gte(trafficSources.date, dateStr)
+            gte(trafficSources.date, dateStartStr),
+            lte(trafficSources.date, dateEndStr)
           )
         }),
         // Detail calls to our new analytics service
-        getTrafficByDevice(projectId, 30),
-        getTrafficByLocation(projectId, 'country', 30),
-        getTrafficByLocation(projectId, 'city', 30),
-        getTrafficByReferrer(projectId, 30),
-        getTrafficBySocial(projectId, 30),
-        getBotActivity(projectId, 30),
-        getAISearchStats(projectId, 30)
+        getTrafficByDevice(projectId, filters),
+        getTrafficByLocation(projectId, 'country', filters),
+        getTrafficByLocation(projectId, 'city', filters),
+        getTrafficByReferrer(projectId, filters),
+        getTrafficBySocial(projectId, filters),
+        getBotActivity(projectId, filters),
+        getAISearchStats(projectId, filters)
       ])
 
       return {
@@ -193,7 +204,7 @@ export const getDashboardAnalytics = async (projectId: string): Promise<Dashboar
         dashboardAnalytics: []
       }
     },
-    [`dashboard-analytics-${projectId}`],
+    [cacheKey],
     {
       revalidate: 3600,
       tags: [`dashboard-analytics-${projectId}`, 'dashboard', 'analytics', 'page-visits', 'ai-search']

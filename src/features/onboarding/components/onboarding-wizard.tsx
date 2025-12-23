@@ -19,7 +19,7 @@ import { Check } from "lucide-react"
 
 const initialData: OnboardingData = {
   user: { firstName: "", lastName: "" },
-  project: { projectName: "", projectUrl: "" },
+  project: { projectName: "", projectUrl: "", title: "", description: "" },
   keywords: { keywords: [] },
   location: null,
 }
@@ -209,6 +209,7 @@ export function OnboardingWizard() {
                   data={data.keywords}
                   onNext={handleKeywordsStep}
                   onBack={goToPrevStep}
+                  suggestions={data.project.suggestedKeywords}
                 />
               )}
               

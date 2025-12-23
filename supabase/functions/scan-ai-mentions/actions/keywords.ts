@@ -10,15 +10,18 @@ export interface IcpProfile {
 }
 
 export interface Project {
-  id: number
+  id: string
   name: string
+  url: string // Added project URL
+  enabled_llm: string[]
+  daily_limit: number
   icp_profiles: IcpProfile[]
 }
 
 export interface Keyword {
-  id: number
+  id: string
   term: string
-  project_id: number
+  project_id: string
   is_active: boolean
   project?: Project
   projects?: Project[] 
@@ -28,9 +31,8 @@ export async function getActiveKeywords(supabase: SupabaseClient): Promise<Keywo
   // On récupère tout, Supabase renvoie souvent les relations sous le nom de la table
   const { data: keywords, error } = await supabase
     .from('keywords')
-    // On essaie de récupérer 'projects' (nom de la table) ET 'project' (nom parfois inféré par postgrest)
-    // Pour être sûr, on demande explicitement la table 'projects'
-    .select('*, projects(*, icp_profiles(*))')
+    // On récupère 'projects' avec les nouvelles colonnes dont l'URL
+    .select('*, projects(id, name, url, enabled_llm, daily_limit, icp_profiles(*))')
     .eq('is_active', true)
 
   if (error) throw error

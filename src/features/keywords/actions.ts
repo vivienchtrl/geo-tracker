@@ -6,7 +6,8 @@ import { eq } from "drizzle-orm"
 import { revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { createKeywordSchema, UpdateKeywordInput } from "@/backend/validators/keywords.validators"
+import { createKeywordSchema, UpdateKeywordInput, CreateKeywordInput } from "@/backend/validators/keywords.validators"
+import { generateKeywordPrompt } from "@/backend/services/ai/keywords-ai.service"
 
 async function getSessionUser() {
   const supabase = await createClient(cookies())
@@ -16,17 +17,16 @@ async function getSessionUser() {
 }
 
 // Reuse helper to get project ID (or fetch from user relation)
-// Ideally this should be passed or retrieved via service context
 import { getProjectByUserId } from "@/backend/services/project-service"
 
-export async function createKeywordAction(term: string, tags: string[] = []) {
+export async function createKeywordAction(data: CreateKeywordInput) {
   try {
     const user = await getSessionUser()
     const project = await getProjectByUserId(user.id)
     
     if (!project) throw new Error("No project found")
 
-    const validation = createKeywordSchema.safeParse({ term, tags })
+    const validation = createKeywordSchema.safeParse(data)
     if (!validation.success) return { error: "Invalid data" }
 
     await db.insert(keywords).values({
@@ -36,7 +36,8 @@ export async function createKeywordAction(term: string, tags: string[] = []) {
 
     revalidateTag('keywords', 'page')
     return { success: true }
-  } catch {
+  } catch (err) {
+    console.error(err)
     return { error: "Failed to create keyword" }
   }
 }
@@ -52,6 +53,16 @@ export async function updateKeywordAction(id: string, data: UpdateKeywordInput) 
         return { success: true }
     } catch {
         return { error: "Failed update" }
+    }
+}
+
+export async function generateAIPromptAction(keywords: string, intent: string) {
+    try {
+        const result = await generateKeywordPrompt(keywords, intent)
+        return { success: true, data: result }
+    } catch (err) {
+        console.error("AI Prompt generation error:", err)
+        return { error: "Failed to generate AI prompt" }
     }
 }
 

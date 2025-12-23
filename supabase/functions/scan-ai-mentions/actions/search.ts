@@ -1,10 +1,13 @@
 import { OpenAI } from 'openai'
-import { Mistral } from 'mistral'
 import { GoogleGenAI } from '@google/genai'
+import { Mistral } from 'mistral'
+import { Anthropic } from '@anthropic-ai/sdk'
 import { SearchResult, ServiceParams } from '../services/types.ts'
 import { searchOpenAI } from '../services/openai.ts'
 import { searchPerplexity } from '../services/perplexity.ts'
+import { searchGrok } from '../services/grok.ts'
 import { searchMistral } from '../services/mistral.ts'
+import { searchAnthropic } from '../services/anthropic.ts'
 import { searchGemini } from '../services/gemini.ts'
 import { extractUrls } from '../utils/helpers.ts'
 
@@ -15,11 +18,14 @@ export type { SearchResult }
 interface PerformSearchParams extends ServiceParams {
   service: string
   openai: OpenAI
+  grok: OpenAI
   mistral: Mistral
+  anthropic: Anthropic
   gemini: GoogleGenAI
   apiKeys: {
     perplexity?: string
     gemini?: string
+    xai?: string
   }
 }
 
@@ -29,7 +35,9 @@ export async function performSearch({
   persona, 
   location, 
   openai, 
-  mistral, 
+  grok, 
+  mistral,
+  anthropic,
   gemini, 
   apiKeys 
 }: PerformSearchParams): Promise<SearchResult> {
@@ -57,8 +65,16 @@ export async function performSearch({
         result = await searchGemini(serviceParams, gemini)
         break
         
+      case 'grok':
+        result = await searchGrok(serviceParams, grok)
+        break
+
       case 'mistral':
         result = await searchMistral(serviceParams, mistral)
+        break
+
+      case 'claude':
+        result = await searchAnthropic(serviceParams, anthropic)
         break
         
       default:
@@ -83,23 +99,5 @@ export async function performSearch({
   } catch (error) {
     console.error(`Error in performSearch for ${service}:`, error)
     throw error
-  }
-}
-
-export async function analyzeSentiment(openai: OpenAI, text: string, projectName: string) {
-  try {
-  const analysis = await openai.chat.completions.create({
-    messages: [
-      { role: "system", content: "Analyze the following text. Look for mentions of the brand: " + projectName + ". Return JSON: { isMentioned: boolean, sentimentScore: number (-100 to 100), sentimentLabel: string }" },
-      { role: "user", content: text }
-    ],
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" }
-  })
-
-  return JSON.parse(analysis.choices[0].message.content || "{}")
-  } catch (error) {
-    console.error("Sentiment analysis failed:", error)
-    return { isMentioned: false, sentimentScore: 0, sentimentLabel: 'neutral' }
   }
 }

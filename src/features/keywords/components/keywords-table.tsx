@@ -27,7 +27,8 @@ export function KeywordsTable({ data }: KeywordsTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-dashed border-border/40">
-              <TableHead className="pl-0 text-[9px] uppercase tracking-widest h-10">Keyword</TableHead>
+              <TableHead className="pl-0 text-[9px] uppercase tracking-widest h-10">Request & Keywords</TableHead>
+              <TableHead className="text-[9px] uppercase tracking-widest h-10 text-center">Strategy</TableHead>
               <TableHead className="text-right text-[9px] uppercase tracking-widest h-10">Visibility</TableHead>
               <TableHead className="text-right text-[9px] uppercase tracking-widest h-10">Avg. Rank</TableHead>
               <TableHead className="pr-0 text-[9px] uppercase tracking-widest h-10 text-right">Competition</TableHead>
@@ -36,7 +37,40 @@ export function KeywordsTable({ data }: KeywordsTableProps) {
           <TableBody>
             {data.map((keyword) => (
               <TableRow key={keyword.id} className="border-dashed border-border/40 hover:bg-primary/5 group/row">
-                <TableCell className="font-bold pl-0 py-4 text-xs uppercase tracking-tight">{keyword.term}</TableCell>
+                <TableCell className="pl-0 py-4 max-w-[200px]">
+                    <div className="flex flex-col gap-1.5">
+                        <span className="font-bold text-xs uppercase tracking-tight truncate" title={keyword.term}>
+                            {keyword.term}
+                        </span>
+                        {keyword.keywords && (
+                            <div className="flex flex-wrap gap-1">
+                                {(typeof keyword.keywords === 'string' 
+                                    ? keyword.keywords.split(',') 
+                                    : Array.isArray(keyword.keywords) 
+                                        ? keyword.keywords 
+                                        : []
+                                ).slice(0, 3).map((k, i) => (
+                                    <span key={i} className="text-[7px] uppercase font-bold text-muted-foreground bg-muted/20 px-1 py-0 border border-dashed border-border/40">
+                                        {String(k).trim()}
+                                    </span>
+                                ))}
+                                {(typeof keyword.keywords === 'string' 
+                                    ? keyword.keywords.split(',') 
+                                    : Array.isArray(keyword.keywords) 
+                                        ? keyword.keywords 
+                                        : []
+                                ).length > 3 && (
+                                    <span className="text-[7px] font-bold text-muted-foreground">...</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </TableCell>
+                <TableCell className="text-center">
+                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black border-dashed border-border/60 uppercase tracking-tighter bg-background/50">
+                        {keyword.keywordsTags || 'generic'}
+                    </Badge>
+                </TableCell>
                 <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-3">
                         <span className="text-[10px] font-mono">{keyword.visibilityRate}%</span>

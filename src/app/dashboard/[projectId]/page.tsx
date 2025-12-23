@@ -5,12 +5,14 @@ import { RefreshCw, Download } from "lucide-react"
 
 // Components
 import { DashboardTabs } from "./dashboard-tabs"
+import { DashboardFilterBar } from "@/components/dashboard/dashboard-filter-bar"
 
 // Data
 import { getDashboardDataForProject } from "./actions"
 import { getDashboardAnalytics } from "@/backend/services/dashboard.service"
 import { getProjectById } from "@/backend/services/project-service"
 import { notFound } from "next/navigation"
+import { DashboardFilters, DateRange } from "@/types/dashboard"
 
 // Constants for AI Source Filtering
 const AI_SOURCES = [
@@ -25,22 +27,34 @@ const AI_SOURCES = [
 
 interface ProjectDashboardPageProps {
   params: Promise<{ projectId: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function ProjectDashboardPage({ params }: ProjectDashboardPageProps) {
+export default async function ProjectDashboardPage({ params, searchParams }: ProjectDashboardPageProps) {
   const { projectId } = await params
+  const searchParamsValue = await searchParams
   
+  // Construct filters from URL params
+  const filters: DashboardFilters = {
+    dateRange: (searchParamsValue.dateRange as DateRange) || '30d',
+    device: searchParamsValue.device as string,
+    country: searchParamsValue.country as string,
+    llmModel: searchParamsValue.llmModel as string,
+    referrer: searchParamsValue.referrer as string,
+    utmCampaign: searchParamsValue.utmCampaign as string,
+  }
+
   // Fetch project data
   const project = await getProjectById(projectId)
   if (!project) notFound()
 
-  // Fetch Data in Parallel
+  // Fetch Data in Parallel using filters
   const [aiMetrics, analyticsData] = await Promise.all([
-    getDashboardDataForProject(projectId),
-    getDashboardAnalytics(projectId)
+    getDashboardDataForProject(projectId, filters),
+    getDashboardAnalytics(projectId, filters)
   ])
 
-  // Filter Traffic for AI Tab
+  // Filter Traffic for AI Tab (Client-side refinement of what's already filtered)
   const aiTrafficData = analyticsData.trafficSources.filter((ts) => {
     const source = ts.source.toLowerCase()
     return AI_SOURCES.some(ai => {
@@ -51,7 +65,7 @@ export default async function ProjectDashboardPage({ params }: ProjectDashboardP
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Header Section - Borders touch Sidebar and Edge */}
+      {/* Header Section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-8 py-12 border-b border-dashed border-border/80 bg-muted/5">
         <div>
           <h1 className="text-4xl font-bold tracking-tighter uppercase">{project.name}</h1>
@@ -74,7 +88,10 @@ export default async function ProjectDashboardPage({ params }: ProjectDashboardP
         </div>
       </div>
 
-      {/* Dashboard Tabs - NO Lateral Padding to let internal borders touch edges */}
+      {/* Filter Bar */}
+      <DashboardFilterBar />
+
+      {/* Dashboard Tabs */}
       <div className="flex-1">
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardTabs
@@ -91,7 +108,7 @@ export default async function ProjectDashboardPage({ params }: ProjectDashboardP
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-8">
       <Skeleton className="h-10 w-64" />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -102,4 +119,3 @@ function DashboardSkeleton() {
     </div>
   )
 }
-

@@ -8,6 +8,8 @@ import { getDashboardAnalytics } from '@/backend/services/dashboard.service'
 export type KeywordData = {
   id: string
   term: string
+  keywords: string
+  keywordsTags: string
   totalScans: number
   visibilityRate: number
   avgRank: number
@@ -141,6 +143,8 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
         keywords: keywordsList.map((k: Keyword) => ({
             id: k.id.toString() || '',
             term: k.term,
+            keywords: k.keywords,
+            keywordsTags: k.keywordsTags,
             totalScans: 0,
             visibilityRate: 0,
             avgRank: 0,
@@ -359,6 +363,8 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     return {
         id: k.id,
         term: k.term,
+        keywords: k.keywords,
+        keywordsTags: k.keywordsTags,
         totalScans: stats.totalScans,
         visibilityRate: stats.totalScans > 0 ? Math.round((stats.mentions / stats.totalScans) * 100) : 0,
         avgRank: stats.mentions > 0 ? Math.round((stats.totalRank / stats.mentions) * 10) / 10 : 0,

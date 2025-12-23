@@ -11,13 +11,19 @@ export interface UserStepData {
 }
 
 export interface ProjectStepData {
+  dailyLimit: number | SQL<unknown> | Placeholder<string, any> | null | undefined
+  enabledLlm: any
   projectName: string
   projectUrl: string
+  title: string
+  description: string
+  suggestedKeywords?: string[]
 }
 
 export interface KeywordItem {
   id: string
-  term: string
+  term: string // The original keyword
+  generatedTerm?: string // The AI generated sentence
 }
 
 export interface KeywordsStepData {

@@ -5,7 +5,7 @@ import { OverviewTab } from "@/components/dashboard/tabs/overview-tab"
 import { AITrafficTab } from "@/components/dashboard/tabs/ai-traffic-tab"
 import { GeneralTrafficTab } from "@/components/dashboard/tabs/general-traffic-tab"
 import { AudienceTab } from "./audience-tab"
-import type { DashboardMetrics } from "./actions"
+import type { DashboardMetrics } from "@/types/dashboard"
 import type { AnalyticsMetric, SearchConsoleMetric, TrafficSource } from "@/types/db"
 
 interface DashboardTabsProps {
@@ -57,4 +57,3 @@ export function DashboardTabs({
     </Tabs>
   )
 }
-

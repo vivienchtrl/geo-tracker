@@ -20,7 +20,7 @@ export async function searchGemini(
   { term, persona, location }: ServiceParams,
   gemini: GoogleGenAI
 ): Promise<SearchResult> {
-  const modelName = 'gemini-2.5-flash'
+  const modelName = 'gemini-2.5-flash-lite'
   
   const groundingTool = {
     googleSearch: {},

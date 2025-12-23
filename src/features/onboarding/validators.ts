@@ -16,7 +16,12 @@ export const projectStepSchema = z.object({
     .min(2, "Project name must be at least 2 characters")
     .max(100, "Project name is too long"),
   projectUrl: z.string()
-    .url("Please enter a valid URL (e.g., https://example.com)"),
+    .min(3, "Please enter a valid domain or URL"),
+  title: z.string().min(2, "Title is required"),
+  description: z.string().min(10, "A detailed description is required"),
+  suggestedKeywords: z.array(z.string()).optional(),
+  enabledLlm: z.array(z.string()).min(1, "Select at least one LLM").default(['chatgpt', 'perplexity']),
+  dailyLimit: z.number().min(1).max(500).default(50),
 })
 
 // Single keyword validation
@@ -25,6 +30,7 @@ export const keywordItemSchema = z.object({
   term: z.string()
     .min(2, "Keyword must be at least 2 characters")
     .max(150, "Keyword is too long"),
+  generatedTerm: z.string().optional(),
 })
 
 // Keywords step validation

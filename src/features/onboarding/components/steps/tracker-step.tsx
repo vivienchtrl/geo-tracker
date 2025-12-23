@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card"
 import { Check, Copy, Loader2, RefreshCw, Terminal, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { checkTrackerSignalAction } from "@/features/integrations/actions"
-import { cn } from "@/utils/utils"
 
 interface TrackerStepProps {
   projectId: string
@@ -48,7 +47,7 @@ export function TrackerStep({ projectId, onComplete }: TrackerStepProps) {
       } else {
         toast.error("No signal detected yet. Make sure the code is added correctly.")
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to verify connection. Please try again.")
     } finally {
       setIsVerifying(false)
@@ -66,7 +65,7 @@ export function TrackerStep({ projectId, onComplete }: TrackerStepProps) {
           Install your tracker
         </h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Add this script to your website's <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;head&gt;</code> tag to start tracking AI crawler activity.
+          Add this script to your website&apos;s <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;head&gt;</code> tag to start tracking AI crawler activity.
         </p>
       </div>
 
@@ -119,24 +118,20 @@ export function TrackerStep({ projectId, onComplete }: TrackerStepProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-center pt-4 border-t border-border/40">
+      <div className="flex flex-col items-center gap-3 pt-4 border-t border-border/40">
         <Button
           onClick={onComplete}
-          disabled={!hasSignal}
-          className={cn(
-            "px-8 transition-all w-full max-w-xs",
-            hasSignal ? "bg-primary" : "bg-muted text-muted-foreground cursor-not-allowed"
-          )}
+          className="px-8 transition-all w-full max-w-xs"
         >
-          {hasSignal ? "Continue" : "Connection Required"}
+          {hasSignal ? "Continue" : "Verify later & Continue"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
+        {!hasSignal && (
+          <p className="text-center text-[10px] uppercase tracking-widest text-muted-foreground">
+            The tracker is optional. You can also install it later from your settings.
+          </p>
+        )}
       </div>
-      {!hasSignal && (
-        <p className="text-center text-xs text-muted-foreground mt-2">
-          Please install the script to continue with onboarding.
-        </p>
-      )}
     </div>
   )
 }

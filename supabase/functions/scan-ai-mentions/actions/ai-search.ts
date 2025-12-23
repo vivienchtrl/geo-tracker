@@ -47,37 +47,15 @@ export async function saveScanResult(supabase: SupabaseClient, data: {
 export async function updateScanWithAnalysis(supabase: SupabaseClient, data: {
   scan_id: number
   is_mentioned: boolean
-  sentiment_score: number
-  sentiment_label: string
   rank: number
 }) {
   const { error } = await supabase
     .from('ai_search')
     .update({
       is_mentioned: data.is_mentioned,
-      sentiment_score: data.sentiment_score,
-      sentiment_label: data.sentiment_label,
       rank: data.rank 
     })
     .eq('id', data.scan_id)
   
   if (error) console.error('Scan Update Error (Analysis)', error)
-}
-
-export async function saveMention(supabase: SupabaseClient, data: {
-  scan_id: number
-  project_id: number | string
-  sentiment_score: number
-  sentiment_label: string
-}) {
-  const { error } = await supabase
-    .from('ai_mentions')
-    .insert({
-      scan_id: data.scan_id,
-      project_id: data.project_id,
-      sentiment_score: data.sentiment_score,
-      sentiment_label: data.sentiment_label
-    })
-  
-  if (error) console.error('Mention Insert Error', error)
 }

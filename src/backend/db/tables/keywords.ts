@@ -8,6 +8,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { project } from "./project";
+import { pgEnum } from "drizzle-orm/pg-core";
+
+export const keywordsTagsEnum = pgEnum("keywords_tags", ["brand", "generic", "commercial", "informational", "navigational", "transactional"]);
 
 export const keywords = pgTable("keywords", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -15,7 +18,8 @@ export const keywords = pgTable("keywords", {
     onDelete: "cascade",
   }).notNull(),
   term: text("term").notNull(),
-  tags: jsonb("tags").$type<string[]>(), // ex: ["brand", "generic"]
+  keywords: text("keywords").notNull(),
+  keywordsTags: keywordsTagsEnum("keywords_tags").default("generic"),
   isActive: boolean("is_active").default(true),
   ranking: integer("ranking"),
   createdAt: timestamp("created_at").defaultNow(),

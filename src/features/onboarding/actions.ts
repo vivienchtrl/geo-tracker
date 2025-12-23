@@ -13,6 +13,11 @@ import { revalidateTag } from "next/cache"
 import { completeOnboardingSchema, type CompleteOnboardingInput, userStepSchema, projectStepSchema, keywordsStepSchema, locationStepSchema } from "./validators"
 import type { UserStepData, ProjectStepData, KeywordsStepData, LocationStepData } from "./types"
 
+// AI & Scraping Services
+import { scrapeWebsiteContent } from "@/backend/services/scraping/page-scraping.service"
+import { generateSiteMetadata } from "@/backend/services/ai/seo-ai.service"
+import { generateQueryIdeas } from "@/backend/services/ai/keywords-ai.service"
+
 interface OnboardingResult {
   success: boolean
   error?: string
@@ -58,6 +63,10 @@ export async function createInitialProject(
         ownerId: user.id,
         name: projectData.projectName,
         url: projectData.projectUrl,
+        title: projectData.title,
+        description: projectData.description,
+        enabledLlm: projectData.enabledLlm,
+        dailyLimit: projectData.dailyLimit,
       }).returning()
 
       if (!newProject) {
@@ -98,13 +107,39 @@ export async function updateOnboardingKeywords(
     if (!validation.success) return { success: false, error: 'Invalid keywords' }
 
     if (data.keywords.length > 0) {
-      await db.insert(keywords).values(
-        data.keywords.map(kw => ({
-          projectId,
-          term: kw.term,
-          isActive: true,
-        }))
-      )
+      // Generate AI terms/sentences for each keyword
+      const keywordInserts = await Promise.all(
+        data.keywords.map(async (kw) => {
+          if (kw.generatedTerm) {
+            return {
+              projectId,
+              term: kw.generatedTerm,
+              keywords: kw.term,
+              isActive: true,
+            };
+          }
+          try {
+            const ideas = await generateQueryIdeas(kw.term, "generic");
+            const term = ideas.length > 0 ? ideas[0] : kw.term;
+            return {
+              projectId,
+              term: term, // The generated sentence
+              keywords: kw.term, // The original keyword
+              isActive: true,
+            };
+          } catch (error) {
+            console.warn(`Failed to generate AI term for keyword: ${kw.term}`, error);
+            return {
+              projectId,
+              term: kw.term,
+              keywords: kw.term,
+              isActive: true,
+            };
+          }
+        })
+      );
+
+      await db.insert(keywords).values(keywordInserts)
     }
 
     revalidateTag('keywords', 'max')
@@ -194,21 +229,50 @@ export async function completeOnboarding(
         ownerId: user.id,
         name: validData.project.projectName,
         url: validData.project.projectUrl,
+        title: validData.project.title,
+        description: validData.project.description,
+        enabledLlm: validData.project.enabledLlm as ("chatgpt" | "perplexity" | "grok" | "mistral" | "anthropic" | "gemini")[],
+        dailyLimit: validData.project.dailyLimit,
       }).returning()
 
       if (!newProject) {
         throw new Error('Failed to create project')
       }
 
-      // 3. Create keywords
+      // 3. Create keywords with AI generated terms
       if (validData.keywords.keywords.length > 0) {
-        await tx.insert(keywords).values(
-          validData.keywords.keywords.map(kw => ({
-            projectId: newProject.id,
-            term: kw.term,
-            isActive: true,
-          }))
-        )
+        const keywordInserts = await Promise.all(
+          validData.keywords.keywords.map(async (kw) => {
+            if (kw.generatedTerm) {
+              return {
+                projectId: newProject.id,
+                term: kw.generatedTerm,
+                keywords: kw.term,
+                isActive: true,
+              };
+            }
+            try {
+              const ideas = await generateQueryIdeas(kw.term, "generic");
+              const term = ideas.length > 0 ? ideas[0] : kw.term;
+                return {
+                  projectId: newProject.id,
+                  term: term,
+                  keywords: kw.term,
+                  isActive: true,
+                };
+              } catch (error) {
+                console.warn(`Failed to generate AI term for keyword in batch: ${kw.term}`, error);
+                return {
+                  projectId: newProject.id,
+                  term: kw.term,
+                  keywords: kw.term,
+                  isActive: true,
+                };
+              }
+            })
+          );
+
+        await tx.insert(keywords).values(keywordInserts)
       }
 
       // 4. Create ICP profile if location data provided
@@ -279,7 +343,34 @@ export async function checkOnboardingStatus() {
 /**
  * Redirect to dashboard after onboarding
  */
-export async function redirectToDashboard(_projectId: string) {
+export async function redirectToDashboard() {
   redirect('/dashboard')
+}
+
+/**
+ * Analyze a website in real-time for onboarding
+ */
+export async function analyzeWebsiteAction(url: string) {
+  try {
+    const content = await scrapeWebsiteContent(url);
+    const metadata = await generateSiteMetadata(content);
+    return { success: true, metadata };
+  } catch (error) {
+    console.error("Analysis error:", error);
+    return { success: false, error: "Failed to analyze website" };
+  }
+}
+
+/**
+ * Suggest a query for a single keyword
+ */
+export async function suggestQueryForKeywordAction(keyword: string) {
+  try {
+    const ideas = await generateQueryIdeas(keyword, "generic");
+    return { success: true, suggestion: ideas[0] || keyword };
+  } catch (error) {
+    console.error("Query suggestion error:", error);
+    return { success: false, error: "Failed to generate suggestion" };
+  }
 }
 

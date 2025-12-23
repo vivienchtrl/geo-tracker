@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrafficSource } from "@/types/db"
-import { DashboardMetrics } from "@/app/dashboard/[projectId]/actions"
+import { DashboardMetrics } from "@/types/dashboard"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 import { CompetitorsChart } from "@/features/keywords/components/competitors-chart"
 import { RecentMentionsTable } from "@/features/mentions/components/recent-mentions-table"
