@@ -9,8 +9,6 @@ export const aiSearchResultSchema = z.object({
   modelUsed: z.string().min(1),
   urlsFound: z.array(z.any()).optional(), // Can be refined if we know the structure of WebSearchResult
   isMentioned: z.boolean().default(false),
-  sentimentScore: z.number().int().optional(),
-  sentimentLabel: z.string().optional(),
   rank: z.number().int().optional(),
 })
 

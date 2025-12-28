@@ -224,9 +224,11 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
       return {
         id: k.id,
         term: k.term,
+        keywords: k.keywords || '',
+        keywordsTags: k.keywordsTags || '',
         totalScans: 0,
         visibilityRate: 0,
-        avgRank: 0, 
+        avgRank: 0,
         competitors: [],
         history: []
       }
@@ -244,6 +246,8 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
     return {
       id: k.id,
       term: k.term,
+      keywords: k.keywords || '',
+      keywordsTags: k.keywordsTags || '',
       totalScans: stats.totalScans,
       visibilityRate: stats.totalScans > 0 ? Math.round((stats.mentions / stats.totalScans) * 100) : 0,
       avgRank: stats.mentions > 0 ? Math.round((stats.totalRank / stats.mentions) * 10) / 10 : 0,
@@ -310,10 +314,6 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
         date: m.date,
         count: m.count,
         mentionedCount: m.mentionedCount
-      })),
-      sentiment: trackerAnalytics.aiSearchStats.sentiment.map((s) => ({
-        label: s.label || 'unknown',
-        count: s.count
       }))
     }
   }

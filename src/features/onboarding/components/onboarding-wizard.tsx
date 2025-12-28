@@ -104,7 +104,7 @@ export function OnboardingWizard() {
       }
 
       toast.success("Welcome! Your account is ready 🎉")
-      await redirectToDashboard(createdProjectId)
+      await redirectToDashboard()
     } catch {
       toast.error("Something went wrong. Please try again.")
     } finally {

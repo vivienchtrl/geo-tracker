@@ -16,6 +16,8 @@ import {
   IconChevronUp,
   IconWorld,
   IconTags,
+  IconRadar,
+  IconBug,
 } from "@tabler/icons-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -62,6 +64,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: `/dashboard/${projectId}`,
       icon: IconChartBar,
       isActive: pathname === `/dashboard/${projectId}`,
+    },
+    {
+      title: "AI Monitoring",
+      url: `/dashboard/${projectId}/ai-monitoring`,
+      icon: IconRadar,
+      isActive: pathname.startsWith(`/dashboard/${projectId}/ai-monitoring`),
+    },
+    {
+      title: "AI Crawlers",
+      url: `/dashboard/${projectId}/ai-crawlers`,
+      icon: IconBug,
+      isActive: pathname.startsWith(`/dashboard/${projectId}/ai-crawlers`),
     },
     {
       title: "AI Copilot",

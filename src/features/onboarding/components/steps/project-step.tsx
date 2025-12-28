@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -149,7 +148,7 @@ export function ProjectStep({ data, onNext, onBack }: ProjectStepProps) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-primary flex items-center gap-2">
+                  <FormLabel className="text-[10px] uppercase font-bold tracking-widest text-primary flex items-center gap-2">
                     <Sparkles className="h-3 w-3" /> Business Title (AI Generated)
                   </FormLabel>
                   <FormControl>
@@ -169,7 +168,7 @@ export function ProjectStep({ data, onNext, onBack }: ProjectStepProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-primary flex items-center gap-2">
+                  <FormLabel className="text-[10px] uppercase font-bold tracking-widest text-primary flex items-center gap-2">
                     <Sparkles className="h-3 w-3" /> Services & Offers (AI Generated)
                   </FormLabel>
                   <FormControl>

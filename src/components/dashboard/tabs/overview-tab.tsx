@@ -4,7 +4,7 @@ import { CompetitorsChart } from "@/features/keywords/components/competitors-cha
 import { RecentMentionsTable } from "@/features/mentions/components/recent-mentions-table";
 import { CrawlerLogsTable } from "@/features/crawler/components/crawler-logs-table";
 import { KeywordsTable } from "@/features/keywords/components/keywords-table";
-import { DashboardMetrics } from "@/types/dashboard";
+import { DashboardMetrics, KeywordData } from "@/types/dashboard";
 
 interface OverviewTabProps {
   data: DashboardMetrics;
@@ -32,7 +32,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
 
       <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
         <div className="lg:col-span-5 border-r border-dashed border-border/80">
-          <KeywordsTable data={data.keywords} />
+          <KeywordsTable data={data.keywords as KeywordData[]} />
         </div>
         <div className="lg:col-span-7">
           <RecentMentionsTable data={data.searchDetails} />

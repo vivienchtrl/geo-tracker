@@ -57,7 +57,8 @@ export const completeOnboardingSchema = z.object({
 })
 
 export type UserStepInput = z.infer<typeof userStepSchema>
-export type ProjectStepInput = z.infer<typeof projectStepSchema>
+export type ProjectStepInput = z.input<typeof projectStepSchema>
+export type ProjectStepOutput = z.output<typeof projectStepSchema>
 export type KeywordsStepInput = z.infer<typeof keywordsStepSchema>
 export type LocationStepInput = z.infer<typeof locationStepSchema>
 export type CompleteOnboardingInput = z.infer<typeof completeOnboardingSchema>

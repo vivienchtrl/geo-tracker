@@ -13,6 +13,9 @@ import {
     botDetectors,
     visitorDemographics,
     geographicActivity,
+    // API Keys & Crawler Visits
+    apiKeys,
+    crawlerVisits,
 } from "@/backend/db/tables/schema";
 import { InferSelectModel } from "drizzle-orm";
 
@@ -31,6 +34,10 @@ export type PageVisit = InferSelectModel<typeof pageVisits>;
 export type BotDetector = InferSelectModel<typeof botDetectors>;
 export type VisitorDemographic = InferSelectModel<typeof visitorDemographics>;
 export type GeographicActivity = InferSelectModel<typeof geographicActivity>;
+
+// API Keys & Crawler Visits types
+export type ApiKey = InferSelectModel<typeof apiKeys>;
+export type CrawlerVisit = InferSelectModel<typeof crawlerVisits>;
 
 // Re-export role type for convenience
 export type ProjectRole = 'owner' | 'editor' | 'viewer';

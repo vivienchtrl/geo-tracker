@@ -7,10 +7,13 @@ export interface DashboardFilters {
   endDate?: Date;
 
   // AI Monitoring
-  llmModel?: string; // Filter by 'gpt-4', 'claude-3', etc.
+  keyword?: string; // keywordId for filtering
+  llmModel?: string; // Filter by single model (legacy)
+  llmModels?: string[]; // Filter by multiple models (multi-select)
   searchQuery?: string; // Filter by specific prompt/query
   sentiment?: 'positive' | 'neutral' | 'negative';
-  
+  competitor?: string; // competitor domain for filtering
+
   // Traffic / Analytics
   device?: string; // 'mobile', 'desktop'
   country?: string; // 'US', 'FR'
@@ -48,10 +51,11 @@ export const getDateRangeDate = (range: DateRange = '30d'): Date => {
 export type KeywordData = {
   id: string
   term: string
+  keywords: string
+  keywordsTags: string
   totalScans: number
   visibilityRate: number
   avgRank: number
-  sentimentScore: number
   competitors: {
     domain: string
     count: number
@@ -69,7 +73,6 @@ export type SearchDetail = {
   query: string
   engine: string
   response: string
-  sentimentLabel: string
   rank: number
   isMentioned: boolean
   urlsFound: {
@@ -86,7 +89,6 @@ export type DashboardMetrics = {
     mentionCount: number
     visibilityRate: number
     averageRank: number
-    sentimentScore: number
   }
   models: {
     name: string
@@ -103,7 +105,6 @@ export type DashboardMetrics = {
     query: string
     engine: string
     response: string
-    sentimentLabel: string
     createdAt: string
   }[]
   crawlerLogs: {
@@ -124,6 +125,56 @@ export type DashboardMetrics = {
   botActivity?: { botName: string; botType: string; count: number }[]
   aiSearchStats?: { 
     mentions: { date: string; count: number; mentionedCount: number }[]
-    sentiment: { label: string; count: number }[]
   }
 }
+
+/**
+ * AI Monitoring Dashboard Types
+ */
+
+export type AIMonitoringState = {
+  filters: DashboardFilters
+  selectedKeyword?: string // keywordId
+  selectedModels?: string[] // modelNames (multi-select)
+  selectedCompetitor?: string // domain
+}
+
+export type AIMetricCard = {
+  label: string
+  value: string | number
+  suffix?: string
+  change?: {
+    value: number
+    trend: 'up' | 'down' | 'stable'
+  }
+  icon?: React.ReactNode
+}
+
+export type AIKeywordMetric = {
+  keyword: string
+  totalScans: number
+  mentions: number
+  visibilityRate: number
+  avgRank: number
+  history: Array<{
+    date: string
+    isMentioned: boolean
+    rank: number
+  }>
+}
+
+export type AIModelMetric = {
+  model: string
+  totalScans: number
+  mentions: number
+  mentionRate: number
+  avgRank: number
+}
+
+export type AICompetitorInsight = {
+  domain: string
+  mentions: number
+  avgRank: number
+  modelsFound: string[]
+}
+

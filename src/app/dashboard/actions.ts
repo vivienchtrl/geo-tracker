@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
-import { Keyword } from '../../../supabase/functions/scan-ai-mentions/actions/keywords'
 import { getDashboardAnalytics } from '@/backend/services/dashboard.service'
 
 export type KeywordData = {
@@ -13,7 +12,6 @@ export type KeywordData = {
   totalScans: number
   visibilityRate: number
   avgRank: number
-  sentimentScore: number
   competitors: {
     domain: string
     count: number
@@ -31,7 +29,6 @@ export type SearchDetail = {
   query: string
   engine: string
   response: string
-  sentimentLabel: string
   rank: number
   isMentioned: boolean
   urlsFound: {
@@ -49,7 +46,6 @@ export type DashboardMetrics = {
     mentionCount: number
     visibilityRate: number
     averageRank: number
-    sentimentScore: number
   }
   models: {
     name: string
@@ -66,7 +62,6 @@ export type DashboardMetrics = {
     query: string
     engine: string
     response: string
-    sentimentLabel: string
     createdAt: string
   }[]
   keywords: KeywordData[]
@@ -76,9 +71,8 @@ export type DashboardMetrics = {
   locationBreakdown?: { name: string; code?: string; count: number }[]
   referrerBreakdown?: { referrer: string; count: number }[]
   botActivity?: { botName: string; botType: string; count: number }[]
-  aiSearchStats?: { 
+  aiSearchStats?: {
     mentions: { date: string; count: number; mentionedCount: number }[]
-    sentiment: { label: string; count: number }[]
   }
 }
 
@@ -103,7 +97,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
   if (!projects || projects.length === 0) {
     return {
       crawlerLogs: [],
-      overview: { totalScans: 0, mentionCount: 0, visibilityRate: 0, averageRank: 0, sentimentScore: 0 },
+      overview: { totalScans: 0, mentionCount: 0, visibilityRate: 0, averageRank: 0 },
       models: [],
       competitors: [],
       recentMentions: [],
@@ -136,22 +130,11 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
   if (scans.length === 0) {
      return {
         crawlerLogs: [],
-        overview: { totalScans: 0, mentionCount: 0, visibilityRate: 0, averageRank: 0, sentimentScore: 0 },
+        overview: { totalScans: 0, mentionCount: 0, visibilityRate: 0, averageRank: 0 },
         models: [],
         competitors: [],
         recentMentions: [],
-        keywords: keywordsList.map((k: Keyword) => ({
-            id: k.id.toString() || '',
-            term: k.term,
-            keywords: k.keywords,
-            keywordsTags: k.keywordsTags,
-            totalScans: 0,
-            visibilityRate: 0,
-            avgRank: 0,
-            sentimentScore: 0,
-            competitors: [],
-            history: []
-        })),
+        keywords: [],
         searchDetails: []
       }
   }
@@ -188,13 +171,8 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
   const totalRank = mentions.reduce((acc: number, curr: any) => acc + (curr.rank || 0), 0)
   const averageRank = mentionCount > 0 ? Math.round((totalRank / mentionCount) * 10) / 10 : 0
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const totalSentiment = mentions.reduce((acc: number, curr: any) => acc + (curr.sentiment_score || 0), 0)
-  const sentimentScore = mentionCount > 0 ? Math.round(totalSentiment / mentionCount) : 0
-
   // --- Aggregation Maps ---
   const modelMap = new Map<string, { total: number; mentioned: number }>()
-  const sentimentMap = new Map<string, { positive: number; neutral: number; negative: number }>()
   const globalCompetitorMap = new Map<string, { count: number; totalRank: number }>()
 
   // --- Keyword Aggregation ---
@@ -202,7 +180,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     totalScans: number
     mentions: number
     totalRank: number
-    totalSentiment: number
     competitors: Map<string, { count: number; totalRank: number }>
     history: { date: string; rank: number; isMentioned: boolean }[]
   }>()
@@ -214,7 +191,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
         totalScans: 0,
         mentions: 0,
         totalRank: 0,
-        totalSentiment: 0,
         competitors: new Map(),
         history: []
     })
@@ -229,14 +205,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     modelStats.total++
     if (scan.isDomainMentioned) modelStats.mentioned++
 
-    // 2. Sentiment Stats
-    if (!sentimentMap.has(modelName)) sentimentMap.set(modelName, { positive: 0, neutral: 0, negative: 0 })
-    const sentimentStats = sentimentMap.get(modelName)!
-    if (scan.sentiment_label === 'positive') sentimentStats.positive++
-    else if (scan.sentiment_label === 'negative') sentimentStats.negative++
-    else sentimentStats.neutral++
-
-    // 3. Competitors (Global) & 4. Keyword Specific Stats
+    // 2. Competitors (Global) & Keyword Specific Stats
     const kwStats = keywordStatsMap.get(scan.keyword_id) // Get stats object for this scan's keyword
 
     if (kwStats) {
@@ -244,7 +213,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
         if (scan.isDomainMentioned) {
             kwStats.mentions++
             kwStats.totalRank += (scan.rank || 0)
-            kwStats.totalSentiment += (scan.sentiment_score || 0)
         }
         kwStats.history.push({
             date: scan.created_at,
@@ -319,7 +287,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     query: s.query,
     engine: s.model_used.split(' (ICP:')[0] || s.model_used,
     response: s.response,
-    sentimentLabel: s.sentiment_label || 'neutral',
     createdAt: new Date(s.created_at || Date.now()).toLocaleDateString()
   }))
 
@@ -330,7 +297,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     query: s.query,
     engine: s.model_used.split(' (ICP:')[0] || s.model_used,
     response: s.response,
-    sentimentLabel: s.sentiment_label || 'neutral',
     rank: s.rank,
     isMentioned: s.isDomainMentioned,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -347,7 +313,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
 
   // Keywords Data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const keywordsData: KeywordData[] = keywordsList.map((k: any) => {
+  const keywordsData: any[] = keywordsList.map((k: any) => {
     const stats = keywordStatsMap.get(k.id)!
     
     // Sort and slice top 5 competitors for this keyword
@@ -363,12 +329,11 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     return {
         id: k.id,
         term: k.term,
-        keywords: k.keywords,
-        keywordsTags: k.keywordsTags,
+        keywords: k.keywords || '',
+        keywordsTags: k.keywords_tags || '',
         totalScans: stats.totalScans,
         visibilityRate: stats.totalScans > 0 ? Math.round((stats.mentions / stats.totalScans) * 100) : 0,
         avgRank: stats.mentions > 0 ? Math.round((stats.totalRank / stats.mentions) * 10) / 10 : 0,
-        sentimentScore: stats.mentions > 0 ? Math.round(stats.totalSentiment / stats.mentions) : 0,
         competitors: topCompetitors,
         history: stats.history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     }
@@ -380,8 +345,7 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
       totalScans: scans.length,
       mentionCount,
       visibilityRate: Math.round((mentionCount / scans.length) * 100),
-      averageRank,
-      sentimentScore
+      averageRank
     },
     models,
     competitors,
@@ -412,10 +376,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
         date: m.date,
         count: m.count,
         mentionedCount: m.mentionedCount
-      })),
-      sentiment: trackerAnalytics.aiSearchStats.sentiment.map((s) => ({
-        label: s.label || '',
-        count: s.count
       }))
     }
   }

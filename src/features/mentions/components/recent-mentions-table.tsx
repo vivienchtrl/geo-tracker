@@ -8,13 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchDetail } from "@/app/dashboard/actions";
 import { ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { cn } from "@/utils/utils";
 
 interface RecentMentionsTableProps {
   data: SearchDetail[]; // Using the full detail type now
@@ -36,7 +35,6 @@ export function RecentMentionsTable({ data }: RecentMentionsTableProps) {
                   <TableHead className="w-[200px] pl-0 text-[9px] uppercase tracking-widest h-10">Query</TableHead>
                   <TableHead className="text-[9px] uppercase tracking-widest h-10">Engine</TableHead>
                   <TableHead className="text-[9px] uppercase tracking-widest h-10">Status</TableHead>
-                  <TableHead className="text-[9px] uppercase tracking-widest h-10">Sentiment</TableHead>
                   <TableHead className="text-right pr-0 text-[9px] uppercase tracking-widest h-10">Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
@@ -86,27 +84,13 @@ function ExpandableRow({ mention }: { mention: SearchDetail }) {
                         </div>
                     )}
                 </TableCell>
-                <TableCell>
-                    <Badge
-                    className={cn(
-                        "text-[8px] h-4 px-2 uppercase font-black border-transparent tracking-widest",
-                        mention.sentimentLabel === "positive"
-                        ? "bg-primary/20 text-primary"
-                        : mention.sentimentLabel === "negative"
-                        ? "bg-destructive/20 text-destructive"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                    >
-                    {mention.sentimentLabel}
-                    </Badge>
-                </TableCell>
                 <TableCell className="text-right text-[10px] font-mono text-muted-foreground/60 pr-0 uppercase">
                     {mention.createdAt}
                 </TableCell>
             </TableRow>
             {isExpanded && (
                 <TableRow className="bg-muted/5 border-dashed border-border/40">
-                    <TableCell colSpan={5} className="p-0">
+                    <TableCell colSpan={4} className="p-0">
                         <div className="p-8 space-y-8">
                             <div className="grid md:grid-cols-2 gap-12">
                                 <div className="space-y-4">

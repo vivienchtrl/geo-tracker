@@ -1,4 +1,5 @@
-import { pgTable, text, primaryKey, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, pgPolicy } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Bot Detectors Reference Table
@@ -42,5 +43,30 @@ export const botDetectors = pgTable(
     isActive: boolean("is_active").default(true),
     updatedAt: timestamp("updated_at").defaultNow(),
   }
-);
+).enableRLS();
+
+// RLS Policies (Public read for authenticated users)
+export const botDetectorsSelectPolicy = pgPolicy("bot_detectors_select_public", {
+  for: "select",
+  to: "authenticated",
+  using: sql`true`,
+}).link(botDetectors);
+
+export const botDetectorsInsertPolicy = pgPolicy("bot_detectors_insert_service", {
+  for: "insert",
+  to: "service_role",
+  withCheck: sql`true`,
+}).link(botDetectors);
+
+export const botDetectorsUpdatePolicy = pgPolicy("bot_detectors_update_service", {
+  for: "update",
+  to: "service_role",
+  using: sql`true`,
+}).link(botDetectors);
+
+export const botDetectorsDeletePolicy = pgPolicy("bot_detectors_delete_service", {
+  for: "delete",
+  to: "service_role",
+  using: sql`true`,
+}).link(botDetectors);
 

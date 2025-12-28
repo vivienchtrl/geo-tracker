@@ -2,10 +2,12 @@ import { notFound } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MembersTab } from "@/features/project/components/members-tab"
+import { ApiKeysTab } from "@/features/ai-crawlers/components/api-keys-tab"
 import { CreditCard, Globe } from "lucide-react"
 import { getProjectMembers, getPendingInvitations } from "@/backend/services/project-members.service"
 import { getProjectWithRole } from "@/backend/services/project-service"
 import { getCurrentUser } from "@/backend/services/user-service"
+import { getApiKeysByProject } from "@/backend/services/api-keys.service"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -30,9 +32,10 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   const { project, role } = projectData
 
   // Fetch Data in Parallel
-  const [membersRaw, invitationsRaw] = await Promise.all([
+  const [membersRaw, invitationsRaw, apiKeysRaw] = await Promise.all([
     getProjectMembers(projectId),
-    getPendingInvitations(projectId)
+    getPendingInvitations(projectId),
+    role === 'owner' ? getApiKeysByProject(projectId) : Promise.resolve([]),
   ])
 
   // Transform Members Data for UI
@@ -74,6 +77,7 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
             <TabsList className="bg-transparent border-dashed border border-border/60 p-1">
               <TabsTrigger value="general" className="uppercase text-[10px] tracking-widest font-bold px-8">General</TabsTrigger>
               <TabsTrigger value="team" className="uppercase text-[10px] tracking-widest font-bold px-8">Team</TabsTrigger>
+              <TabsTrigger value="api-keys" className="uppercase text-[10px] tracking-widest font-bold px-8">API Keys</TabsTrigger>
               <TabsTrigger value="billing" className="uppercase text-[10px] tracking-widest font-bold px-8">Billing</TabsTrigger>
             </TabsList>
           </div>
@@ -157,6 +161,17 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
                   members={members}
                   invitations={invitations}
                   currentUserRole={role}
+                />
+              </div>
+            </TabsContent>
+
+            {/* API Keys Tab */}
+            <TabsContent value="api-keys" className="outline-none m-0">
+              <div className="min-h-full border-b border-dashed border-border/80">
+                <ApiKeysTab
+                  projectId={projectId}
+                  apiKeys={apiKeysRaw}
+                  isOwner={isOwner}
                 />
               </div>
             </TabsContent>

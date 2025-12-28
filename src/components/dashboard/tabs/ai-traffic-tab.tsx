@@ -31,7 +31,7 @@ export function AITrafficTab({ aiTraffic, aiMetrics }: AITrafficTabProps) {
       {/* AI Search Metrics & Bot Activity */}
       <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
         <div className="lg:col-span-8 border-r border-dashed border-border/80">
-          <AISearchMetricsChart data={aiMetrics.aiSearchStats || { mentions: [], sentiment: [] }} />
+          <AISearchMetricsChart data={aiMetrics.aiSearchStats || { mentions: [] }} />
         </div>
         <div className="lg:col-span-4">
           <BotActivityChart data={aiMetrics.botActivity || []} />
