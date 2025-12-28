@@ -54,7 +54,8 @@ export async function createApiKeyAction(
       expiresAt: null,
     });
 
-    revalidateTag("api-keys", "project-api-keys");
+    revalidateTag("api-keys", "max");
+    revalidateTag("project-api-keys", "max");
 
     return {
       success: true,
@@ -97,7 +98,8 @@ export async function revokeApiKeyAction(
       return { success: false, error: "API key not found" };
     }
 
-    revalidateTag("api-keys", "project-api-keys");
+    revalidateTag("api-keys", "max");
+    revalidateTag("project-api-keys", "max");
 
     return { success: true };
   } catch (error) {
@@ -160,7 +162,9 @@ export async function clearPlaintextKeyAction(
     const { clearPlaintextKey } = await import("@/backend/services/api-keys.service");
     await clearPlaintextKey(keyId, projectId);
 
-    revalidateTag("api-keys", "project-api-keys");
+    revalidateTag("api-keys", "max");
+    revalidateTag("project-api-keys", "max");
+
     return { success: true };
   } catch (error) {
     console.error("[CLEAR_PLAINTEXT_KEY]", error);
