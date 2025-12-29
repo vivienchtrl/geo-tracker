@@ -52,14 +52,22 @@ export async function createInitialProject(
     }
 
     const result = await db.transaction(async (tx) => {
-      // 1. Update user profile
-      await tx.update(users)
-        .set({
+      // 1. Insert or update user profile (upsert)
+      await tx.insert(users)
+        .values({
+          id: user.id,
+          email: user.email!,
           firstName: userData.firstName,
           lastName: userData.lastName,
-          updatedAt: new Date(),
         })
-        .where(eq(users.id, user.id))
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            updatedAt: new Date(),
+          },
+        })
 
       // 2. Create project
       const [newProject] = await tx.insert(project).values({
@@ -237,14 +245,22 @@ export async function completeOnboarding(
 
     // Transaction: Create user, project, keywords, and optionally ICP profile
     const result = await db.transaction(async (tx) => {
-      // 1. Update user profile
-      await tx.update(users)
-        .set({
+      // 1. Insert or update user profile (upsert)
+      await tx.insert(users)
+        .values({
+          id: user.id,
+          email: user.email!,
           firstName: validData.user.firstName,
           lastName: validData.user.lastName,
-          updatedAt: new Date(),
         })
-        .where(eq(users.id, user.id))
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            firstName: validData.user.firstName,
+            lastName: validData.user.lastName,
+            updatedAt: new Date(),
+          },
+        })
 
       // 2. Create project
       const [newProject] = await tx.insert(project).values({
