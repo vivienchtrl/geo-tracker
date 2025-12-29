@@ -103,7 +103,7 @@ export function AICrawlersActivity({
   }
 
   const filteredVisits = selectedBotType
-    ? botVisits.filter((v) => v.isBot === selectedBotType)
+    ? botVisits.filter((v) => v.userAgent === selectedBotType)
     : botVisits;
 
   return (
@@ -255,11 +255,11 @@ export function AICrawlersActivity({
                           className="w-2 h-2 rounded-full"
                           style={{
                             backgroundColor:
-                              BOT_COLORS[visit.isBot || ""] ||
+                              BOT_COLORS[visit.userAgent || ""] ||
                               BOT_COLORS.other,
                           }}
                         />
-                        <span className="font-medium">{visit.botName}</span>
+                        <span className="font-medium">{visit.userAgent}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-[11px] text-muted-foreground font-mono">
