@@ -1,9 +1,9 @@
 import { db } from "@/backend/db/db"
-import { project, users, keywords, icpProfiles, aiSearch, searchConsoleMetrics, analyticsMetrics, trafficSources, projectMembers } from "@/backend/db/tables/schema"
-import { eq, desc, and, gte, lte } from "drizzle-orm"
+import { project, users, keywords, icpProfiles, aiSearch, projectMembers } from "@/backend/db/tables/schema"
+import { eq, desc } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
-import type { User, Project, Keyword, IcpProfile, AiSearch, SearchConsoleMetric, AnalyticsMetric, TrafficSource } from "@/types/db"
-import { DashboardFilters, getDateRangeDate } from "@/types/dashboard"
+import type { User, Project, Keyword, IcpProfile, AiSearch } from "@/types/db"
+import { DashboardFilters } from "@/types/dashboard"
 import { getTrafficByDevice, getTrafficByLocation, getTrafficByReferrer, getBotActivity, getAISearchStats, getTrafficBySocial } from "./analytics.service"
 
 export type DashboardContext = {
@@ -20,10 +20,7 @@ export type DashboardAnalytics = {
   competitors: never[]
   models: never[]
   dashboardAnalytics: never[]
-  gscHistory: SearchConsoleMetric[]
-  analyticsHistory: AnalyticsMetric[]
-  trafficSources: TrafficSource[]
-  // Tracker-based detailed analytics
+  // Detailed analytics from crawler visits
   deviceBreakdown: Awaited<ReturnType<typeof getTrafficByDevice>>
   locationBreakdown: Awaited<ReturnType<typeof getTrafficByLocation>>
   cityBreakdown: Awaited<ReturnType<typeof getTrafficByLocation>>
@@ -136,49 +133,15 @@ export const getDashboardContext = async (userId: string): Promise<DashboardCont
 }
 
 /**
- * Fetches analytics data (GSC, GA4, Traffic Sources) for the dashboard.
+ * Fetches analytics data (Traffic Sources) for the dashboard.
  * Cached separately as it might update less frequently or be heavier.
  */
 export const getDashboardAnalytics = async (projectId: string, filters: DashboardFilters = {}): Promise<DashboardAnalytics> => {
   const cacheKey = `dashboard-analytics-${projectId}-${JSON.stringify(filters)}`;
-  
+
   return await unstable_cache(
     async () => {
-      // Determine date range for pre-aggregated tables (GSC, GA4)
-      const dateEnd = filters.endDate || new Date();
-      const dateStart = filters.startDate || getDateRangeDate(filters.dateRange || '30d');
-      const dateStartStr = dateStart.toISOString().split('T')[0];
-      const dateEndStr = dateEnd.toISOString().split('T')[0];
-
-      // GSC & Analytics Filters
-      // Note: These tables only have 'date' and 'project_id' usually.
-      // We can only filter by date here unless we add more columns.
-      
-      const [gsc, analytics, traffic, device, location, city, referrers, social, bots, aiStats] = await Promise.all([
-        db.query.searchConsoleMetrics.findMany({
-          where: and(
-            eq(searchConsoleMetrics.projectId, projectId),
-            gte(searchConsoleMetrics.date, dateStartStr),
-            lte(searchConsoleMetrics.date, dateEndStr)
-          ),
-          orderBy: (t, { asc }) => asc(t.date)
-        }),
-        db.query.analyticsMetrics.findMany({
-          where: and(
-            eq(analyticsMetrics.projectId, projectId),
-            gte(analyticsMetrics.date, dateStartStr),
-            lte(analyticsMetrics.date, dateEndStr)
-          ),
-          orderBy: (t, { asc }) => asc(t.date)
-        }),
-        db.query.trafficSources.findMany({
-          where: and(
-            eq(trafficSources.projectId, projectId),
-            gte(trafficSources.date, dateStartStr),
-            lte(trafficSources.date, dateEndStr)
-          )
-        }),
-        // Detail calls to our new analytics service
+      const [device, location, city, referrers, social, bots, aiStats] = await Promise.all([
         getTrafficByDevice(projectId, filters),
         getTrafficByLocation(projectId, 'country', filters),
         getTrafficByLocation(projectId, 'city', filters),
@@ -189,9 +152,6 @@ export const getDashboardAnalytics = async (projectId: string, filters: Dashboar
       ])
 
       return {
-        gscHistory: gsc,
-        analyticsHistory: analytics,
-        trafficSources: traffic,
         deviceBreakdown: device,
         locationBreakdown: location,
         cityBreakdown: city,
@@ -207,7 +167,7 @@ export const getDashboardAnalytics = async (projectId: string, filters: Dashboar
     [cacheKey],
     {
       revalidate: 3600,
-      tags: [`dashboard-analytics-${projectId}`, 'dashboard', 'analytics', 'page-visits', 'ai-search']
+      tags: [`dashboard-analytics-${projectId}`, 'dashboard', 'analytics', 'crawler-visits', 'ai-search']
     }
   )()
 }

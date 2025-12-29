@@ -1,10 +1,10 @@
 'use server'
 
 import { db } from '@/backend/db/db'
-import { keywords, aiSearch, project, pageVisits } from '@/backend/db/tables/schema'
-import { eq, desc, isNotNull, and, gte, lte, ilike, SQL } from 'drizzle-orm'
+import { keywords, aiSearch, project, crawlerVisits } from '@/backend/db/tables/schema'
+import { eq, desc, and, gte, lte, ilike, SQL } from 'drizzle-orm'
 import { getDashboardAnalytics } from '@/backend/services/dashboard.service'
-import type { AiSearch, Keyword, PageVisit } from '@/types/db'
+import type { AiSearch, Keyword, CrawlerVisit } from '@/types/db'
 import { DashboardFilters, getDateRangeDate, DashboardMetrics, KeywordData } from '@/types/dashboard'
 
 /**
@@ -29,23 +29,19 @@ async function getAiMetricsData(projectId: string, filters: DashboardFilters = {
   }
   if (filters.searchQuery) {
     aiConditions.push(ilike(aiSearch.query, `%${filters.searchQuery}%`));
-  } 
-
-  // Build Crawler Filters
-  // Note: Crawler logs come from pageVisits where isBot is NOT null
-  const crawlerConditions: SQL[] = [
-    eq(pageVisits.projectId, projectId),
-    isNotNull(pageVisits.isBot)
-  ];
-  
-  if (filters.startDate && filters.endDate) {
-    crawlerConditions.push(and(gte(pageVisits.createdAt, filters.startDate), lte(pageVisits.createdAt, filters.endDate))!);
-  } else {
-    const cutoff = getDateRangeDate(filters.dateRange || '30d');
-    crawlerConditions.push(gte(pageVisits.createdAt, cutoff)!);
   }
 
-  const [keywordsList, aiSearchList, projectData, crawlerVisits] = await Promise.all([
+  // Build Crawler Visits Filters
+  const crawlerConditions: SQL[] = [eq(crawlerVisits.projectId, projectId)];
+
+  if (filters.startDate && filters.endDate) {
+    crawlerConditions.push(and(gte(crawlerVisits.timestamp, filters.startDate), lte(crawlerVisits.timestamp, filters.endDate))!);
+  } else {
+    const cutoff = getDateRangeDate(filters.dateRange || '30d');
+    crawlerConditions.push(gte(crawlerVisits.timestamp, cutoff)!);
+  }
+
+  const [keywordsList, aiSearchList, projectData, crawlerLogs] = await Promise.all([
     db.query.keywords.findMany({
       where: eq(keywords.projectId, projectId),
       orderBy: desc(keywords.createdAt)
@@ -57,14 +53,14 @@ async function getAiMetricsData(projectId: string, filters: DashboardFilters = {
     db.query.project.findFirst({
       where: eq(project.id, projectId)
     }),
-    db.query.pageVisits.findMany({
+    db.query.crawlerVisits.findMany({
       where: and(...crawlerConditions),
-      orderBy: desc(pageVisits.createdAt),
-      limit: 50 // Increased limit to show more logs
+      orderBy: desc(crawlerVisits.timestamp),
+      limit: 50
     })
   ])
 
-  return { keywordsList, aiSearchList, projectUrl: projectData?.url || '', crawlerVisits }
+  return { keywordsList, aiSearchList, projectUrl: projectData?.url || '', crawlerLogs }
 }
 
 /**
@@ -72,7 +68,7 @@ async function getAiMetricsData(projectId: string, filters: DashboardFilters = {
  */
 export async function getDashboardDataForProject(projectId: string, filters: DashboardFilters = {}): Promise<DashboardMetrics> {
   // Fetch AI-specific data and detailed analytics in parallel
-  const [{ keywordsList, aiSearchList, projectUrl, crawlerVisits }, trackerAnalytics] = await Promise.all([
+  const [{ keywordsList, aiSearchList, projectUrl, crawlerLogs }, crawlerAnalytics] = await Promise.all([
     getAiMetricsData(projectId, filters),
     getDashboardAnalytics(projectId, filters)
   ])
@@ -142,7 +138,7 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
         try {
           const link = typeof urlItem === 'string' ? urlItem : urlItem?.link
           if (!link || typeof link !== 'string') return
-          
+
           const hostname = new URL(link).hostname.replace('www.', '')
           if (hostname === projectHostname) return
 
@@ -219,7 +215,7 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
 
   const keywordsData: KeywordData[] = keywordsList.map((k: Keyword) => {
     const stats = keywordStatsMap.get(k.id)
-    
+
     if (!stats) {
       return {
         id: k.id,
@@ -266,51 +262,51 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
       totalScans,
       mentionCount,
       visibilityRate: totalScans > 0 ? Math.round((mentionCount / totalScans) * 100) : 0,
-      averageRank: mentionCount > 0 
-        ? Math.round((mentionedScans.reduce((acc: number, curr: AiSearch) => acc + (curr.rank || 0), 0) / mentionCount) * 10) / 10 
+      averageRank: mentionCount > 0
+        ? Math.round((mentionedScans.reduce((acc: number, curr: AiSearch) => acc + (curr.rank || 0), 0) / mentionCount) * 10) / 10
         : 0,
     },
     models,
     competitors,
     recentMentions,
-    crawlerLogs: crawlerVisits.map((v: PageVisit) => ({
+    crawlerLogs: crawlerLogs.map((v: CrawlerVisit) => ({
       id: v.id,
-      botName: v.botName || v.isBot || 'Unknown Bot',
+      botName: v.botName,
       path: v.path,
       createdAt: v.createdAt ? new Date(v.createdAt).toLocaleString() : '',
-      source: (v.metadata as { source?: string })?.source || 'javascript'
+      source: v.source || 'cloudflare'
     })),
     keywords: keywordsData,
     searchDetails,
-    // Add detailed analytics from tracker
-    deviceBreakdown: trackerAnalytics.deviceBreakdown.map((d) => ({
+    // Add detailed analytics from crawler visits
+    deviceBreakdown: crawlerAnalytics.deviceBreakdown.map((d) => ({
       deviceType: d.deviceType || 'unknown',
       count: d.count
     })),
-    locationBreakdown: trackerAnalytics.locationBreakdown.map((l) => ({
+    locationBreakdown: crawlerAnalytics.locationBreakdown.map((l) => ({
       name: l.name || 'unknown',
       code: l.code || undefined,
       count: l.count
     })),
-    cityBreakdown: trackerAnalytics.cityBreakdown.map((c) => ({
+    cityBreakdown: crawlerAnalytics.cityBreakdown.map((c) => ({
       name: c.name || 'unknown',
       count: c.count
     })),
-    referrerBreakdown: trackerAnalytics.referrerBreakdown.map((r) => ({
+    referrerBreakdown: crawlerAnalytics.referrerBreakdown.map((r) => ({
       referrer: r.referrer || 'unknown',
       count: r.count
     })),
-    socialBreakdown: trackerAnalytics.socialBreakdown.map((s) => ({
+    socialBreakdown: crawlerAnalytics.socialBreakdown.map((s) => ({
       referrer: s.referrer || 'unknown',
       count: s.count
     })),
-    botActivity: trackerAnalytics.botActivity.map((b) => ({
+    botActivity: crawlerAnalytics.botActivity.map((b) => ({
       botName: b.botName || 'unknown',
       botType: b.botType || 'unknown',
       count: b.count
     })),
     aiSearchStats: {
-      mentions: trackerAnalytics.aiSearchStats.mentions.map((m) => ({
+      mentions: crawlerAnalytics.aiSearchStats.mentions.map((m) => ({
         date: m.date,
         count: m.count,
         mentionedCount: m.mentionedCount
@@ -320,8 +316,7 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
 }
 
 /**
- * Get analytics data (GSC, GA4, Traffic) for the dashboard
- * This is separate from AI metrics
+ * Get analytics data for the dashboard
  */
 export async function getAnalyticsDataForProject(projectId: string, filters: DashboardFilters = {}) {
   return getDashboardAnalytics(projectId, filters)

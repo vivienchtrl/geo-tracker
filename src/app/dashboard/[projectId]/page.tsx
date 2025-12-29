@@ -14,17 +14,6 @@ import { getProjectById } from "@/backend/services/project-service"
 import { notFound } from "next/navigation"
 import { DashboardFilters, DateRange } from "@/types/dashboard"
 
-// Constants for AI Source Filtering
-const AI_SOURCES = [
-  'chatgpt', 'openai', 
-  'perplexity', 
-  'gemini', 'bard',
-  'deepseek',
-  'mistral',
-  'claude', 'anthropic',
-  'bing'
-]
-
 interface ProjectDashboardPageProps {
   params: Promise<{ projectId: string }>
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -49,19 +38,10 @@ export default async function ProjectDashboardPage({ params, searchParams }: Pro
   if (!project) notFound()
 
   // Fetch Data in Parallel using filters
-  const [aiMetrics, analyticsData] = await Promise.all([
+  const [aiMetrics] = await Promise.all([
     getDashboardDataForProject(projectId, filters),
     getDashboardAnalytics(projectId, filters)
   ])
-
-  // Filter Traffic for AI Tab (Client-side refinement of what's already filtered)
-  const aiTrafficData = analyticsData.trafficSources.filter((ts) => {
-    const source = ts.source.toLowerCase()
-    return AI_SOURCES.some(ai => {
-      if (ai === 'google') return false
-      return source.includes(ai)
-    })
-  })
 
   return (
     <div className="flex flex-col min-h-full">
@@ -96,9 +76,6 @@ export default async function ProjectDashboardPage({ params, searchParams }: Pro
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardTabs
             aiMetrics={aiMetrics}
-            aiTrafficData={aiTrafficData}
-            analyticsHistory={analyticsData.analyticsHistory}
-            gscHistory={analyticsData.gscHistory}
           />
         </Suspense>
       </div>

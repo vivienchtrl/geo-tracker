@@ -14,6 +14,7 @@ import {
   getCrawlerTimeline,
   getBotBreakdown,
 } from "@/backend/services/crawler-visits.service";
+import { AICrawlersProvider } from "@/features/ai-crawlers/providers/ai-crawlers-provider";
 import { AICrawlersDashboard } from "@/features/ai-crawlers/components/ai-crawlers-dashboard";
 
 interface AICrawlersPageProps {
@@ -74,15 +75,25 @@ export default async function AICrawlersPage({
         </div>
       </div>
 
-      {/* Dashboard Content */}
-      <AICrawlersDashboard
+      {/* Dashboard Content wrapped in Provider */}
+      <AICrawlersProvider
         projectId={projectId}
-        initialVisits={visitsData.visits}
-        hasMoreVisits={visitsData.hasMore}
-        kpis={kpis}
-        timeline={timeline}
-        botBreakdown={botBreakdown}
-      />
+        initialData={{
+          visits: visitsData.visits,
+          hasMore: visitsData.hasMore,
+          kpis,
+          timeline,
+          botBreakdown,
+        }}
+        initialFilters={{
+          startDate,
+          endDate,
+          botName: search.botName,
+          botCategory: search.botCategory,
+        }}
+      >
+        <AICrawlersDashboard />
+      </AICrawlersProvider>
     </div>
   );
 }

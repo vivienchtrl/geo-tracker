@@ -1,8 +1,8 @@
 import { OverviewMetrics } from "@/features/analytics/components/overview-metrics";
 import { VisibilityChart } from "@/features/keywords/components/visibility-chart";
 import { CompetitorsChart } from "@/features/keywords/components/competitors-chart";
-import { RecentMentionsTable } from "@/features/mentions/components/recent-mentions-table";
-import { CrawlerLogsTable } from "@/features/crawler/components/crawler-logs-table";
+import { RecentMentionsTable } from "@/features/ai-monitoring/components/recent-mentions-table";
+import { CrawlerLogsTable } from "@/features/ai-crawlers/components/crawler-logs-table";
 import { KeywordsTable } from "@/features/keywords/components/keywords-table";
 import { DashboardMetrics, KeywordData } from "@/types/dashboard";
 

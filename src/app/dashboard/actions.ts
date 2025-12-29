@@ -65,8 +65,8 @@ export type DashboardMetrics = {
     createdAt: string
   }[]
   keywords: KeywordData[]
-  searchDetails: SearchDetail[] 
-  // Detailed Analytics (from Geo-Tracker)
+  searchDetails: SearchDetail[]
+  // Detailed Analytics (from Cloudflare/WordPress integrations)
   deviceBreakdown?: { deviceType: string; count: number }[]
   locationBreakdown?: { name: string; code?: string; count: number }[]
   referrerBreakdown?: { referrer: string; count: number }[]
@@ -109,8 +109,8 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
   const project = projects[0]
   const projectUrl = new URL(project.url).hostname.replace('www.', '')
 
-  // 2. Fetch Detailed Analytics (Tracker) & AI Search results
-  const [scansResult, keywordsResult, trackerAnalytics] = await Promise.all([
+  // 2. Fetch Detailed Analytics (Crawler Visits) & AI Search results
+  const [scansResult, keywordsResult, crawlerAnalytics] = await Promise.all([
     supabase
       .from('ai_search')
       .select('*')
@@ -352,27 +352,27 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
     recentMentions,
     keywords: keywordsData,
     searchDetails,
-    // Add detailed analytics from tracker
-    deviceBreakdown: trackerAnalytics.deviceBreakdown.map((d) => ({
+    // Add detailed analytics from crawler visits
+    deviceBreakdown: crawlerAnalytics.deviceBreakdown.map((d) => ({
       deviceType: d.deviceType || '',
       count: d.count
     })),
-    locationBreakdown: trackerAnalytics.locationBreakdown.map((l) => ({
+    locationBreakdown: crawlerAnalytics.locationBreakdown.map((l) => ({
       name: l.name || '',
       code: l.code || undefined,
       count: l.count
     })),
-    referrerBreakdown: trackerAnalytics.referrerBreakdown.map((r) => ({
+    referrerBreakdown: crawlerAnalytics.referrerBreakdown.map((r) => ({
       referrer: r.referrer || '',
       count: r.count
     })),
-    botActivity: trackerAnalytics.botActivity.map((b) => ({
+    botActivity: crawlerAnalytics.botActivity.map((b) => ({
       botName: b.botName || '',
       botType: b.botType || '',
       count: b.count
     })),
     aiSearchStats: {
-      mentions: trackerAnalytics.aiSearchStats.mentions.map((m) => ({
+      mentions: crawlerAnalytics.aiSearchStats.mentions.map((m) => ({
         date: m.date,
         count: m.count,
         mentionedCount: m.mentionedCount

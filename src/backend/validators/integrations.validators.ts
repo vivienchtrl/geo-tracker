@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createIntegrationSchema = z.object({
     projectId: z.string().uuid("Invalid project ID"),
-    provider: z.enum(["google", "search_console", "analytics_4"]),
+    provider: z.string().min(1, "Provider is required"),
     accessToken: z.string().min(1, "Access token is required"),
     refreshToken: z.string().min(1, "Refresh token is required"),
     expiresAt: z.coerce.date().optional().nullable(),

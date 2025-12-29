@@ -1,57 +1,40 @@
 import { db } from "@/backend/db/db";
-import {
-  pageVisits,
-  aiSearch,
-} from "@/backend/db/tables/schema";
-import { eq, and, gte, lte, sql, desc, inArray, isNull, ilike, SQL } from "drizzle-orm";
+import { aiSearch, crawlerVisits } from "@/backend/db/tables/schema";
+import { eq, and, gte, lte, sql, desc, ilike, SQL } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { DashboardFilters, getDateRangeDate } from "@/types/dashboard";
 
 /**
  * Analytics Service
- * 
+ *
  * Purpose: Provide aggregated data for dashboard charts and metrics.
- * Strategy: Leverage pre-aggregated tables where possible, fallback to raw page_visits for granular data.
+ * Uses crawler_visits for bot/AI tracking and ai_search for mention tracking.
  */
 
-// Helper to build common filters
-const buildCommonFilters = (projectId: string, filters: DashboardFilters, table: typeof pageVisits | typeof aiSearch) => {
-  const conditions: SQL[] = [eq(table.projectId, projectId)];
+// Helper to build common filters for crawler visits
+const buildCrawlerFilters = (projectId: string, filters: DashboardFilters) => {
+  const conditions: SQL[] = [eq(crawlerVisits.projectId, projectId)];
 
-  // Date Range
   if (filters.startDate && filters.endDate) {
-    conditions.push(and(gte(table.createdAt, filters.startDate), lte(table.createdAt, filters.endDate))!);
+    conditions.push(and(gte(crawlerVisits.timestamp, filters.startDate), lte(crawlerVisits.timestamp, filters.endDate))!);
   } else {
     const cutoff = getDateRangeDate(filters.dateRange || '30d');
-    conditions.push(gte(table.createdAt, cutoff)!);
+    conditions.push(gte(crawlerVisits.timestamp, cutoff)!);
   }
 
   return conditions;
 };
 
-// Helper to build traffic specific filters
-const buildTrafficFilters = (filters: DashboardFilters) => {
-  const conditions: SQL[] = [isNull(pageVisits.isBot)];
+// Helper to build AI search filters
+const buildAiFilters = (projectId: string, filters: DashboardFilters) => {
+  const conditions: SQL[] = [eq(aiSearch.projectId, projectId)];
 
-  if (filters.device) {
-    conditions.push(eq(pageVisits.deviceType, filters.device));
+  if (filters.startDate && filters.endDate) {
+    conditions.push(and(gte(aiSearch.createdAt, filters.startDate), lte(aiSearch.createdAt, filters.endDate))!);
+  } else {
+    const cutoff = getDateRangeDate(filters.dateRange || '30d');
+    conditions.push(gte(aiSearch.createdAt, cutoff)!);
   }
-  if (filters.country) {
-    conditions.push(eq(pageVisits.countryCode, filters.country));
-  }
-  if (filters.referrer) {
-    conditions.push(ilike(pageVisits.referrerDomain, `%${filters.referrer}%`));
-  }
-  if (filters.utmCampaign) {
-    conditions.push(eq(pageVisits.utmCampaign, filters.utmCampaign));
-  }
-
-  return conditions;
-};
-
-// Helper to build AI specific filters
-const buildAiFilters = (filters: DashboardFilters) => {
-  const conditions: SQL[] = [];
 
   if (filters.llmModel) {
     conditions.push(ilike(aiSearch.modelUsed, `%${filters.llmModel}%`));
@@ -64,48 +47,43 @@ const buildAiFilters = (filters: DashboardFilters) => {
 };
 
 /**
- * Get Traffic breakdown by Device Type
+ * Get Traffic breakdown by Bot Category (device type equivalent)
  */
 export const getTrafficByDevice = async (projectId: string, filters: DashboardFilters) => {
   const cacheKey = `traffic-by-device-${projectId}-${JSON.stringify(filters)}`;
-  
+
   return await unstable_cache(
     async () => {
-      const conditions = [
-        ...buildCommonFilters(projectId, filters, pageVisits),
-        ...buildTrafficFilters(filters)
-      ];
+      const conditions = buildCrawlerFilters(projectId, filters);
 
       return await db
         .select({
-          deviceType: pageVisits.deviceType,
+          deviceType: crawlerVisits.botCategory,
           count: sql<number>`COUNT(*)`,
         })
-        .from(pageVisits)
+        .from(crawlerVisits)
         .where(and(...conditions))
-        .groupBy(pageVisits.deviceType)
+        .groupBy(crawlerVisits.botCategory)
         .orderBy(desc(sql<number>`COUNT(*)`));
     },
     [cacheKey],
-    { revalidate: 3600, tags: [`analytics-${projectId}`, "page-visits"] }
+    { revalidate: 3600, tags: [`analytics-${projectId}`, "crawler-visits"] }
   )();
 };
 
 /**
- * Get Traffic breakdown by Location (Country, Region, City)
+ * Get Traffic breakdown by Location (Country)
  */
 export const getTrafficByLocation = async (projectId: string, type: "country" | "region" | "city" = "country", filters: DashboardFilters) => {
   const cacheKey = `traffic-by-location-${type}-${projectId}-${JSON.stringify(filters)}`;
 
   return await unstable_cache(
     async () => {
-      const conditions = [
-        ...buildCommonFilters(projectId, filters, pageVisits),
-        ...buildTrafficFilters(filters)
-      ];
+      const conditions = buildCrawlerFilters(projectId, filters);
 
-      const column = type === "country" ? pageVisits.country : type === "region" ? pageVisits.region : pageVisits.city;
-      const codeColumn = type === "country" ? pageVisits.countryCode : null;
+      const column = type === "country" ? crawlerVisits.country :
+                     type === "region" ? crawlerVisits.region : crawlerVisits.city;
+      const codeColumn = type === "country" ? crawlerVisits.countryCode : null;
 
       return await db
         .select({
@@ -113,43 +91,40 @@ export const getTrafficByLocation = async (projectId: string, type: "country" | 
           ...(codeColumn ? { code: codeColumn } : {}),
           count: sql<number>`COUNT(*)`,
         })
-        .from(pageVisits)
+        .from(crawlerVisits)
         .where(and(...conditions))
         .groupBy(column, ...(codeColumn ? [codeColumn] : []))
         .orderBy(desc(sql<number>`COUNT(*)`))
         .limit(10);
     },
     [cacheKey],
-    { revalidate: 3600, tags: [`analytics-${projectId}`, "page-visits"] }
+    { revalidate: 3600, tags: [`analytics-${projectId}`, "crawler-visits"] }
   )();
 };
 
 /**
- * Get Traffic breakdown by Referrer/Source
+ * Get Traffic breakdown by Path (referrer equivalent)
  */
 export const getTrafficByReferrer = async (projectId: string, filters: DashboardFilters) => {
   const cacheKey = `traffic-by-referrer-${projectId}-${JSON.stringify(filters)}`;
 
   return await unstable_cache(
     async () => {
-      const conditions = [
-        ...buildCommonFilters(projectId, filters, pageVisits),
-        ...buildTrafficFilters(filters)
-      ];
+      const conditions = buildCrawlerFilters(projectId, filters);
 
       return await db
         .select({
-          referrer: pageVisits.referrerDomain,
+          referrer: crawlerVisits.path,
           count: sql<number>`COUNT(*)`,
         })
-        .from(pageVisits)
+        .from(crawlerVisits)
         .where(and(...conditions))
-        .groupBy(pageVisits.referrerDomain)
+        .groupBy(crawlerVisits.path)
         .orderBy(desc(sql<number>`COUNT(*)`))
         .limit(10);
     },
     [cacheKey],
-    { revalidate: 3600, tags: [`analytics-${projectId}`, "page-visits"] }
+    { revalidate: 3600, tags: [`analytics-${projectId}`, "crawler-visits"] }
   )();
 };
 
@@ -161,84 +136,58 @@ export const getBotActivity = async (projectId: string, filters: DashboardFilter
 
   return await unstable_cache(
     async () => {
-      // Bot activity ignores 'isBot' filter from buildTrafficFilters because we WANT bots here
-      const commonConditions = buildCommonFilters(projectId, filters, pageVisits);
-      
-      const conditions = [
-        ...commonConditions,
-        sql`${pageVisits.isBot} IS NOT NULL`
-      ];
+      const conditions = buildCrawlerFilters(projectId, filters);
 
       return await db
         .select({
-          botName: pageVisits.botName,
-          botType: pageVisits.isBot,
+          botName: crawlerVisits.botName,
+          botType: crawlerVisits.botCategory,
           count: sql<number>`COUNT(*)`,
         })
-        .from(pageVisits)
+        .from(crawlerVisits)
         .where(and(...conditions))
-        .groupBy(pageVisits.botName, pageVisits.isBot)
+        .groupBy(crawlerVisits.botName, crawlerVisits.botCategory)
         .orderBy(desc(sql<number>`COUNT(*)`));
     },
     [cacheKey],
-    { revalidate: 3600, tags: [`analytics-${projectId}`, "page-visits"] }
+    { revalidate: 3600, tags: [`analytics-${projectId}`, "crawler-visits"] }
   )();
 };
 
 /**
- * Get Traffic breakdown by Social Channel
+ * Get Traffic breakdown by Source (integration source)
  */
 export const getTrafficBySocial = async (projectId: string, filters: DashboardFilters) => {
   const cacheKey = `traffic-by-social-${projectId}-${JSON.stringify(filters)}`;
 
   return await unstable_cache(
     async () => {
-      const conditions = [
-        ...buildCommonFilters(projectId, filters, pageVisits),
-        ...buildTrafficFilters(filters)
-      ];
-
-      const socialPatterns = [
-        't.co', 'twitter.com', 'x.com', 
-        'facebook.com', 'fb.me',
-        'linkedin.com', 'lnkd.in',
-        'instagram.com',
-        'reddit.com',
-        'youtube.com',
-        'tiktok.com',
-        'pinterest.com',
-        'threads.net'
-      ];
-
-      conditions.push(inArray(pageVisits.referrerDomain, socialPatterns));
+      const conditions = buildCrawlerFilters(projectId, filters);
 
       return await db
         .select({
-          referrer: pageVisits.referrerDomain,
+          referrer: crawlerVisits.source,
           count: sql<number>`COUNT(*)`,
         })
-        .from(pageVisits)
+        .from(crawlerVisits)
         .where(and(...conditions))
-        .groupBy(pageVisits.referrerDomain)
+        .groupBy(crawlerVisits.source)
         .orderBy(desc(sql<number>`COUNT(*)`));
     },
     [cacheKey],
-    { revalidate: 3600, tags: [`analytics-${projectId}`, "page-visits"] }
+    { revalidate: 3600, tags: [`analytics-${projectId}`, "crawler-visits"] }
   )();
 };
 
 /**
- * Get AI Search Mention Stats (Mentions over time, Sentiment)
+ * Get AI Search Mention Stats (Mentions over time)
  */
 export const getAISearchStats = async (projectId: string, filters: DashboardFilters) => {
   const cacheKey = `ai-search-stats-${projectId}-${JSON.stringify(filters)}`;
 
   return await unstable_cache(
     async () => {
-      const conditions = [
-        ...buildCommonFilters(projectId, filters, aiSearch),
-        ...buildAiFilters(filters)
-      ];
+      const conditions = buildAiFilters(projectId, filters);
 
       const mentions = await db
         .select({

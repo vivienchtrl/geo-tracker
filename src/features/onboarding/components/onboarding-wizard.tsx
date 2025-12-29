@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
 import { cn } from "@/utils/utils"
-import { UserInfoStep, ProjectStep, KeywordsStep, LocationStep, TrackerStep } from "./steps"
+import { UserInfoStep, ProjectStep, KeywordsStep, LocationStep } from "./steps"
 import { createInitialProject, updateOnboardingKeywords, updateOnboardingLocation, redirectToDashboard } from "../actions"
 import { 
   ONBOARDING_STEPS, 
@@ -68,10 +68,6 @@ export function OnboardingWizard() {
       setIsSubmitting(false)
     }
   }, [data.user, goToNextStep])
-
-  const handleTrackerStep = useCallback(() => {
-    goToNextStep()
-  }, [goToNextStep])
 
   const handleKeywordsStep = useCallback(async (stepData: KeywordsStepData) => {
     if (!createdProjectId) return
@@ -196,14 +192,7 @@ export function OnboardingWizard() {
                   onBack={goToPrevStep}
                 />
               )}
-              
-              {currentStep === 'tracker' && createdProjectId && (
-                <TrackerStep
-                  projectId={createdProjectId}
-                  onComplete={handleTrackerStep}
-                />
-              )}
-              
+
               {currentStep === 'keywords' && (
                 <KeywordsStep
                   data={data.keywords}

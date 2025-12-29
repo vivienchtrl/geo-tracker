@@ -9,15 +9,14 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
-  IconRobot,
   IconLogout,
   IconBell,
   IconUser,
   IconChevronUp,
-  IconWorld,
   IconTags,
   IconRadar,
   IconBug,
+  IconSearch,
 } from "@tabler/icons-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -78,22 +77,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive: pathname.startsWith(`/dashboard/${projectId}/ai-crawlers`),
     },
     {
-      title: "AI Copilot",
-      url: `/dashboard/${projectId}/ai-copilot`,
-      icon: IconRobot,
-      isActive: pathname === `/dashboard/${projectId}/ai-copilot`,
+      title: "Competitors",
+      url: `/dashboard/${projectId}/competitors`,
+      icon: IconSearch,
+      isActive: pathname.startsWith(`/dashboard/${projectId}/competitors`),
     },
     {
       title: "Keywords",
       url: `/dashboard/${projectId}/keywords`,
       icon: IconTags,
       isActive: pathname === `/dashboard/${projectId}/keywords`,
-    },
-    {
-      title: "Audience & ICP",
-      url: `/dashboard/${projectId}/audience`,
-      icon: IconWorld,
-      isActive: pathname === `/dashboard/${projectId}/audience`,
     },
     {
       title: "Project Settings",

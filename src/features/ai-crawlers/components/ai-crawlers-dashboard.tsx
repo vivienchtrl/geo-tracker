@@ -9,68 +9,29 @@
  * - Timeline Chart
  * - Bot Breakdown Chart
  * - Recent Visits Table
+ *
+ * Uses AICrawlersProvider context for state management
  */
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense } from "react";
 import { AICrawlersFilters } from "./ai-crawlers-filters";
 import { AICrawlersMetrics } from "./ai-crawlers-metrics";
 import { CrawlersTimelineChart } from "./charts/crawlers-timeline-chart";
 import { BotBreakdownChart } from "./charts/bot-breakdown-chart";
 import { RecentVisitsTable } from "./recent-visits-table";
-import { getCrawlerVisitsAction } from "../actions";
+import {
+  useAICrawlers,
+  useAICrawlersKPIs,
+  useAICrawlersCharts,
+  useAICrawlersPagination,
+} from "../hooks/use-ai-crawlers";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CrawlerVisit } from "@/types/db";
 
-interface AICrawlersDashboardProps {
-  projectId: string;
-  initialVisits: CrawlerVisit[];
-  hasMoreVisits: boolean;
-  kpis: {
-    totalVisits: number;
-    uniqueBots: number;
-    uniquePaths: number;
-    siteMentions: number;
-    avgResponseTime: number;
-  };
-  timeline: Array<{
-    date: string;
-    total: number;
-    aiCrawlers: number;
-    mentioned: number;
-  }>;
-  botBreakdown: Array<{
-    botName: string;
-    count: number;
-  }>;
-}
-
-export function AICrawlersDashboard({
-  projectId,
-  initialVisits,
-  hasMoreVisits,
-  kpis,
-  timeline,
-  botBreakdown,
-}: AICrawlersDashboardProps) {
-  const [visits, setVisits] = useState<CrawlerVisit[]>(initialVisits);
-  const [hasMore, setHasMore] = useState(hasMoreVisits);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const handleLoadMore = useCallback(async () => {
-    setIsLoadingMore(true);
-    try {
-      const result = await getCrawlerVisitsAction(projectId, {
-        offset: visits.length,
-        limit: 20,
-      });
-      setVisits((prev) => [...prev, ...result.visits]);
-      setHasMore(result.hasMore);
-    } catch (error) {
-      console.error("Error loading more visits:", error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [projectId, visits.length]);
+export function AICrawlersDashboard() {
+  const { visits } = useAICrawlers();
+  const kpis = useAICrawlersKPIs();
+  const { timeline, botBreakdown } = useAICrawlersCharts();
+  const { hasMore, isLoadingMore, loadMore } = useAICrawlersPagination();
 
   // Get unique bot names for filter
   const uniqueBots = [...new Set(botBreakdown.map((b) => b.botName))];
@@ -115,7 +76,7 @@ export function AICrawlersDashboard({
             <RecentVisitsTable
               visits={visits}
               hasMore={hasMore}
-              onLoadMore={handleLoadMore}
+              onLoadMore={loadMore}
               isLoadingMore={isLoadingMore}
             />
           </Suspense>

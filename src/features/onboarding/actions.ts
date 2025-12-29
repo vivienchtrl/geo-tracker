@@ -3,6 +3,7 @@
 import { db } from "@/backend/db/db"
 import { users } from "@/backend/db/tables/user"
 import { project } from "@/backend/db/tables/project"
+import { projectMembers } from "@/backend/db/tables/project-members"
 import { keywords } from "@/backend/db/tables/keywords"
 import { icpProfiles } from "@/backend/db/tables/icp-profile"
 import { apiKeys } from "@/backend/db/tables/api-keys"
@@ -75,7 +76,14 @@ export async function createInitialProject(
         throw new Error('Failed to create project')
       }
 
-      // 3. Auto-generate default API key
+      // 3. Add owner to project_members
+      await tx.insert(projectMembers).values({
+        projectId: newProject.id,
+        userId: user.id,
+        role: "owner",
+      })
+
+      // 4. Auto-generate default API key
       const { plainKey, keyHash, prefix } = generateApiKey()
       await tx.insert(apiKeys).values({
         projectId: newProject.id,
@@ -91,6 +99,7 @@ export async function createInitialProject(
 
     revalidateTag('projects', 'max')
     revalidateTag(`user-${user.id}`, 'max')
+    revalidateTag('project-members', 'max')
 
     return { success: true, projectId: result.projectId }
   } catch (error) {
@@ -252,7 +261,14 @@ export async function completeOnboarding(
         throw new Error('Failed to create project')
       }
 
-      // 3. Auto-generate default API key
+      // 3. Add owner to project_members
+      await tx.insert(projectMembers).values({
+        projectId: newProject.id,
+        userId: user.id,
+        role: "owner",
+      })
+
+      // 4. Auto-generate default API key
       const { plainKey: key, keyHash: hash, prefix: pfx } = generateApiKey()
       await tx.insert(apiKeys).values({
         projectId: newProject.id,
@@ -263,7 +279,7 @@ export async function completeOnboarding(
         scopes: ["crawlers:write"],
       })
 
-      // 4. Create keywords with AI generated terms
+      // 5. Create keywords with AI generated terms
       if (validData.keywords.keywords.length > 0) {
         const keywordInserts = await Promise.all(
           validData.keywords.keywords.map(async (kw) => {
@@ -299,7 +315,7 @@ export async function completeOnboarding(
         await tx.insert(keywords).values(keywordInserts)
       }
 
-      // 5. Create ICP profile if location data provided
+      // 6. Create ICP profile if location data provided
       if (validData.location) {
         await tx.insert(icpProfiles).values({
           projectId: newProject.id,
@@ -318,6 +334,7 @@ export async function completeOnboarding(
     // Revalidate caches
     revalidateTag('projects', 'max')
     revalidateTag(`user-${user.id}`, 'max')
+    revalidateTag('project-members', 'max')
     revalidateTag('keywords', 'max')
     revalidateTag('icp-profiles', 'max')
 

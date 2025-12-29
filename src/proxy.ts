@@ -1,206 +1,37 @@
 /**
  * Proxy Handler for Next.js 16
  *
- * Combines:
- * 1. Supabase Auth Protection
- * 2. Bot Detection & Tracking (server-side, no user code needed)
+ * Handles Supabase Auth Protection
  *
  * Purpose:
  * - Handle authentication and route protection
- * - Automatically capture ALL page visits (bot + human) server-side
- * - Log User-Agent and detect bots without user HTML modifications
- *
- * Performance:
- * - Runs at Edge (if using Vercel)
- * - ~1ms overhead per request
- * - Non-blocking async logging
+ * - Redirect unauthenticated users from dashboard
+ * - Redirect authenticated users from auth pages
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { getBotInfo, isKnownAIProvider } from "@/features/tracking/utils/bot-detector";
-import { capturePageVisit, getProjectIdByDomain } from "@/backend/services/tracking.service";
-
-// ============================================================
-// CONFIGURATION
-// ============================================================
-
-const EXCLUDED_PATHS = [
-  '/_next',           // Next.js internals
-  '/api/health',      // Health checks
-  '/api/webhook',     // Webhooks (prevent loops)
-  '.ico',             // Favicon
-  '.png',             // Images
-  '.jpg',
-  '.svg',
-  '.css',
-  '.js.map',          // Source maps
-];
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-/**
- * Check if path should be tracked
- */
-function shouldTrack(pathname: string): boolean {
-  return !EXCLUDED_PATHS.some(path => pathname.includes(path));
-}
-
-/**
- * Extract useful information from request headers
- */
-function extractRequestInfo(request: NextRequest) {
-  const userAgent = request.headers.get('user-agent') || 'unknown';
-  const referer = request.headers.get('referer') || null;
-  const acceptLanguage = request.headers.get('accept-language') || null;
-  
-  // Extract IP (from multiple possible headers)
-  const ip =
-    request.headers.get('cf-connecting-ip') ||     // Cloudflare
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    request.headers.get('x-client-ip') ||
-    'unknown';
-
-  return {
-    userAgent,
-    referer,
-    acceptLanguage,
-    ip,
-  };
-}
-
-// ============================================================
-// MAIN PROXY FUNCTION
-// ============================================================
 
 /**
  * Main proxy handler
- * Handles auth + tracks all requests with bot detection
+ * Handles auth protection
  */
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const searchParams = request.nextUrl.searchParams;
-  const host = request.headers.get('host') || '';
-  
-  // 1. DÉTERMINATION DU PROJET (projectId ou par domaine)
-  let projectId = searchParams.get('p') || searchParams.get('projectId'); 
 
-  // Si pas de projectId dans l'URL, on essaie de le trouver par le domaine
-  // Utile pour capturer les bots qui visitent l'accueil sans charger les scripts
-  if (!projectId && shouldTrack(pathname)) {
-    projectId = await getProjectIdByDomain(host);
-  }
-
-  // 2. DÉTECTION ET CAPTURE AUTOMATIQUE (Server-Side)
-  const { userAgent, referer, ip, acceptLanguage } = extractRequestInfo(request);
-  const botInfo = getBotInfo(userAgent);
-  const botDetected = botInfo.botType !== null;
-
-  // Si c'est un bot OU un asset de tracking, on capture
-  const isTrackingAsset = pathname.includes('tracker') || pathname.includes('pixel');
-
-  if (projectId && (botDetected || isTrackingAsset)) {
-    // ON UTILISE AWAIT ICI - CRUCIAL pour que Vercel Edge ne coupe pas la connexion
-    // avant que la base de données n'ait reçu l'enregistrement.
-    try {
-      // Pour les assets de tracking (script/pixel), on essaie de récupérer la vraie page via le Referer
-      let capturePath = pathname || '/';
-      if (isTrackingAsset && referer) {
-        try {
-          const refererUrl = new URL(referer);
-          capturePath = refererUrl.pathname;
-        } catch {
-          // Fallback au pathname de l'asset si le referer est invalide
-        }
-      }
-
-      await capturePageVisit({
-        projectId,
-        eventType: 'page_view',
-        path: capturePath,
-        userAgent,
-        referrer: referer || undefined,
-        acceptLanguage: acceptLanguage || undefined,
-        metadata: { 
-          detection_method: botDetected ? 'proxy_bot_universal' : 'proxy_asset_load',
-          asset_type: isTrackingAsset ? (pathname.includes('pixel') ? 'pixel' : 'script') : 'page',
-          domain: host,
-          isBot: botDetected,
-          original_path: pathname, // On garde trace du path original de l'asset
-          note: botDetected ? 'Universal bot detection at proxy level' : 'Tracker asset request capture'
-        }
-      }, ip);
-      console.log(`[PROXY-CAPTURE] Success: ${botDetected ? botInfo.botName : 'Asset load'} for project ${projectId} on ${capturePath}`);
-    } catch (err) {
-      console.error('[PROXY-CAPTURE-ERROR]', err);
-    }
-  }
-
-  // ============================================================
-  // STEP 1: Track requests with bot detection (Diagnostic Logs)
-  // ============================================================
-  if (shouldTrack(pathname)) {
-    try {
-      const isAI = isKnownAIProvider(userAgent);
-
-      // Log all requests
-      console.log('[PROXY-TRACK]', {
-        timestamp: new Date().toISOString(),
-        pathname,
-        ip,
-        userAgent,
-        referer,
-        acceptLanguage,
-        botDetection: {
-          type: botInfo.botType,
-          name: botInfo.botName,
-          category: botInfo.category,
-          confidence: botInfo.confidence,
-          isAIProvider: isAI,
-        },
-      });
-
-      // Log bots separately for easy filtering
-      if (botInfo.botType !== null) {
-        console.log('[BOT-DETECTED]', {
-          timestamp: new Date().toISOString(),
-          botType: botInfo.botType,
-          botName: botInfo.botName,
-          pathname,
-          ip,
-        });
-      }
-    } catch (error) {
-      // Don't break request if tracking fails
-      console.error('[PROXY-TRACK-ERROR]', error);
-    }
-  }
-
-  // ============================================================
-  // STEP 2: Handle Supabase Session Refresh
-  // ============================================================
+  // Handle Supabase Session Refresh
   const { supabaseResponse, user } = await updateSession(request);
 
-  // ============================================================
-  // STEP 3: Protect Dashboard Routes
-  // ============================================================
+  // Protect Dashboard Routes
   if (pathname.startsWith('/dashboard') && !user) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
-  // ============================================================
-  // STEP 4: Redirect Logged-in Users away from Auth pages
-  // ============================================================
+  // Redirect Logged-in Users away from Auth pages
   if ((pathname.startsWith('/auth/sign-in') || pathname.startsWith('/auth/sign-up')) && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // ============================================================
-  // STEP 5: Return auth response (with tracking already logged)
-  // ============================================================
   return supabaseResponse;
 }
 

@@ -1,7 +1,8 @@
 import { Suspense } from 'react'
 import { IntegrationsClient } from '@/features/integrations/components/integrations-client'
-import { getIntegrationStatusAction, checkTrackerSignalAction } from '@/features/integrations/actions'
-import { getProjectById } from '@/backend/services/project-service'
+import { getProjectWithRole } from '@/backend/services/project-service'
+import { getApiKeysByProject } from '@/backend/services/api-keys.service'
+import { getCurrentUser } from '@/backend/services/user-service'
 import { Skeleton } from "@/components/ui/skeleton"
 import { notFound } from 'next/navigation'
 
@@ -11,9 +12,16 @@ interface IntegrationsPageProps {
 
 export default async function IntegrationsPage({ params }: IntegrationsPageProps) {
   const { projectId } = await params
-  const project = await getProjectById(projectId)
-  if (!project) notFound()
-  
+
+  const user = await getCurrentUser()
+  if (!user) notFound()
+
+  const projectData = await getProjectWithRole(projectId, user.id)
+  if (!projectData) notFound()
+
+  const { role } = projectData
+  const isOwner = role === 'owner'
+
   return (
     <div className="flex flex-col min-h-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-8 py-12 border-b border-dashed border-border/80 bg-muted/5">
@@ -22,7 +30,7 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
           <div className="flex items-center gap-3 mt-3">
             <div className="h-px w-8 bg-primary/50" />
             <p className="text-muted-foreground text-[10px] uppercase tracking-[0.3em]">
-              Connect your data ecosystem
+              Cloudflare & WordPress AI Tracking
             </p>
           </div>
         </div>
@@ -30,38 +38,25 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
 
       <div className="flex-1">
         <Suspense fallback={<IntegrationsSkeleton />}>
-          <IntegrationsContent projectId={projectId} />
+          <IntegrationsContent projectId={projectId} isOwner={isOwner} />
         </Suspense>
       </div>
     </div>
   )
 }
 
-async function IntegrationsContent({ projectId }: { projectId: string }) {
-  // Get integration status and tracker signal in parallel
-  const [status, trackerSignal] = await Promise.all([
-    getIntegrationStatusAction(projectId),
-    checkTrackerSignalAction(projectId),
-  ])
+async function IntegrationsContent({ projectId, isOwner }: { projectId: string; isOwner: boolean }) {
+  const apiKeys = isOwner ? await getApiKeysByProject(projectId) : []
 
-  const fullStatus = {
-    google: status.google || false,
-    searchConsole: status.searchConsole || false,
-    analytics: status.analytics || false,
-    tracker: trackerSignal.hasSignal || false,
-    lastSignal: trackerSignal.lastSignal,
-  }
-
-  return <IntegrationsClient initialStatus={fullStatus} projectId={projectId} />
+  return <IntegrationsClient projectId={projectId} apiKeys={apiKeys} isOwner={isOwner} />
 }
 
 function IntegrationsSkeleton() {
   return (
-    <div className="grid gap-0 md:grid-cols-2 lg:grid-cols-3 border-b border-dashed border-border/80">
-      <Skeleton className="h-[300px] w-full rounded-none border-r border-dashed border-border/80" />
-      <Skeleton className="h-[300px] w-full rounded-none border-r border-dashed border-border/80" />
-      <Skeleton className="h-[300px] w-full rounded-none" />
+    <div className="border-b border-dashed border-border/80 p-8 space-y-6">
+      <Skeleton className="h-24 w-full rounded-none" />
+      <Skeleton className="h-48 w-full rounded-none" />
+      <Skeleton className="h-64 w-full rounded-none" />
     </div>
   )
 }
-
