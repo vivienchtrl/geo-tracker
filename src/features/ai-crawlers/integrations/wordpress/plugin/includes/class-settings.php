@@ -88,11 +88,12 @@ class Geo_Tracker_Settings {
         // Enabled field
         add_settings_field(
             'geo_tracker_enabled',
-            __('Enable Tracking', 'geo-tracker'),
+            __('Enable Bot Tracking', 'geo-tracker'),
             [$this, 'render_enabled_field'],
             'geo-tracker',
             'geo_tracker_main_section'
         );
+
     }
 
     /**
@@ -306,7 +307,7 @@ class Geo_Tracker_Settings {
             <?php esc_html_e('Enable AI bot tracking', 'geo-tracker'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('Uncheck to temporarily disable tracking without removing your settings.', 'geo-tracker'); ?>
+            <?php esc_html_e('Track AI crawlers like GPTBot, ClaudeBot, PerplexityBot, etc.', 'geo-tracker'); ?>
         </p>
         <?php
     }

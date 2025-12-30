@@ -42,6 +42,15 @@ export const sourceEnum = z.enum([
 ]);
 
 /**
+ * Visit type enum - distinguishes crawlers from user-triggered mentions
+ */
+export const visitTypeEnum = z.enum([
+  "crawler",      // Bot crawling for indexing/training
+  "user_mention", // User asked AI to read this site (= mention in response)
+  "search",       // AI search indexing
+]);
+
+/**
  * Schema for a single crawler visit log entry
  * Sent by external integrations (Cloudflare Workers, etc.)
  */
@@ -124,6 +133,12 @@ export const crawlerVisitSchema = z.object({
   // Bot category (optional, can be auto-detected)
   botCategory: botCategoryEnum.optional().nullable(),
 
+  // Bot company (e.g., OpenAI, Anthropic, Google)
+  botCompany: z.string().max(100).optional().nullable(),
+
+  // Visit type - crawler, user_mention, or search
+  visitType: visitTypeEnum.default("crawler"),
+
   // Source integration
   source: sourceEnum.default("cloudflare"),
 });
@@ -144,3 +159,4 @@ export type BatchCrawlerVisitsInput = z.infer<typeof batchCrawlerVisitsSchema>;
 export type BotCategory = z.infer<typeof botCategoryEnum>;
 export type HttpMethod = z.infer<typeof httpMethodEnum>;
 export type IntegrationSource = z.infer<typeof sourceEnum>;
+export type VisitType = z.infer<typeof visitTypeEnum>;

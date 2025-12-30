@@ -53,7 +53,10 @@ export const pageVisitSchema = z.object({
     .string()
     .min(1, "Path is required")
     .max(2048, "Path must be less than 2048 characters"),
-  timestamp: z.string().datetime({ message: "Invalid timestamp format. Use ISO 8601." }),
+  timestamp: z.string().refine(
+    (val) => !isNaN(Date.parse(val)),
+    { message: "Invalid timestamp format. Use ISO 8601." }
+  ),
 
   // Optional session tracking
   sessionId: z

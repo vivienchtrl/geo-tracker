@@ -40,6 +40,12 @@ export const crawlerVisits = pgTable(
     botCategory: text("bot_category", {
       enum: ["ai_crawler", "search_engine", "social_crawler", "monitoring", "other"],
     }).notNull(),
+    botCompany: text("bot_company"), // 'OpenAI', 'Anthropic', 'Google', etc.
+
+    // Visit type - distinguishes crawlers from user-triggered mentions
+    visitType: text("visit_type", {
+      enum: ["crawler", "user_mention", "search"],
+    }).default("crawler"), // crawler = indexing, user_mention = cited in response, search = search index
 
     // Request Details
     userAgent: text("user_agent").notNull(),
@@ -117,6 +123,12 @@ export const crawlerVisits = pgTable(
     projectPathIdx: index("crawler_visits_project_path_idx").on(
       table.projectId,
       table.path,
+      table.timestamp
+    ),
+    // Visit type filtering (crawler vs user_mention vs search)
+    projectVisitTypeIdx: index("crawler_visits_project_visit_type_idx").on(
+      table.projectId,
+      table.visitType,
       table.timestamp
     ),
   })

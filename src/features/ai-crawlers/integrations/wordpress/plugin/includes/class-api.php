@@ -50,6 +50,7 @@ class Geo_Tracker_API {
             'botName'     => $bot['name'],
             'botCategory' => $bot['category'],
             'botCompany'  => $bot['company'],
+            'visitType'   => $bot['visitType'] ?? 'crawler',
         ]);
 
         // Use non-blocking request to not slow down page load
@@ -126,6 +127,45 @@ class Geo_Tracker_API {
             'success' => false,
             'message' => sprintf(__('Unexpected response: %d', 'geo-tracker'), $status_code),
         ];
+    }
+
+    /**
+     * Log a human page visit
+     *
+     * @param array $request_data Request data (path, visitorId, etc.)
+     * @return bool Success status
+     */
+    public function log_page_visit($request_data) {
+        if (!get_option('geo_tracker_enabled', '1')) {
+            return false;
+        }
+
+        // Use visits endpoint instead of crawlers
+        $visits_endpoint = str_replace('/crawlers/log', '/visits/log', $this->endpoint);
+
+        $args = [
+            'timeout'     => 5,
+            'redirection' => 0,
+            'httpversion' => '1.1',
+            'blocking'    => false,
+            'headers'     => [
+                'Content-Type' => 'application/json',
+                'X-API-Key'    => $this->api_key,
+                'User-Agent'   => 'Prexia-WordPress/' . GEO_TRACKER_VERSION,
+            ],
+            'body'        => wp_json_encode($request_data),
+            'cookies'     => [],
+            'sslverify'   => true,
+        ];
+
+        $response = wp_remote_post($visits_endpoint, $args);
+
+        if (is_wp_error($response)) {
+            $this->log_error('Page visit log failed: ' . $response->get_error_message());
+            return false;
+        }
+
+        return true;
     }
 
     /**

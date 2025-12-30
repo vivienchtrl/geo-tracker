@@ -58,6 +58,7 @@ final class Geo_Tracker {
      */
     private function load_dependencies() {
         require_once GEO_TRACKER_PLUGIN_DIR . 'includes/class-bot-detector.php';
+        require_once GEO_TRACKER_PLUGIN_DIR . 'includes/class-visitor-tracker.php';
         require_once GEO_TRACKER_PLUGIN_DIR . 'includes/class-api.php';
         require_once GEO_TRACKER_PLUGIN_DIR . 'includes/class-settings.php';
     }
@@ -85,7 +86,7 @@ final class Geo_Tracker {
     }
 
     /**
-     * Detect AI bots
+     * Detect AI bots and track visitors
      */
     public function detect_bots() {
         $api_key = get_option('geo_tracker_api_key', '');
@@ -96,10 +97,17 @@ final class Geo_Tracker {
 
         $detector = new Geo_Tracker_Bot_Detector();
         $bot = $detector->detect();
+        $api = new Geo_Tracker_API($api_key);
 
         if ($bot) {
-            $api = new Geo_Tracker_API($api_key);
+            // Log bot visit
             $api->log_visit($bot, $detector->get_request_data());
+        } else {
+            // Log human page visit
+            $visitor_tracker = new Geo_Tracker_Visitor_Tracker();
+            if ($visitor_tracker->should_track()) {
+                $api->log_page_visit($visitor_tracker->get_request_data());
+            }
         }
     }
 
