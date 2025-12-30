@@ -31,7 +31,7 @@ class Geo_Tracker_API {
      */
     public function __construct($api_key) {
         $this->api_key = $api_key;
-        $this->endpoint = get_option('geo_tracker_endpoint', 'https://geo-tracker.com/api/v1/crawlers/log');
+        $this->endpoint = get_option('geo_tracker_endpoint', 'https://prexia.vercel.app/api/v1/crawlers/log');
     }
 
     /**
@@ -61,7 +61,7 @@ class Geo_Tracker_API {
             'headers'     => [
                 'Content-Type' => 'application/json',
                 'X-API-Key'    => $this->api_key,
-                'User-Agent'   => 'GeoTracker-WordPress/' . GEO_TRACKER_VERSION,
+                'User-Agent'   => 'Prexia-WordPress/' . GEO_TRACKER_VERSION,
             ],
             'body'        => wp_json_encode($payload),
             'cookies'     => [],
@@ -92,7 +92,7 @@ class Geo_Tracker_API {
             'headers'     => [
                 'Content-Type' => 'application/json',
                 'X-API-Key'    => $this->api_key,
-                'User-Agent'   => 'GeoTracker-WordPress/' . GEO_TRACKER_VERSION,
+                'User-Agent'   => 'Prexia-WordPress/' . GEO_TRACKER_VERSION,
             ],
             'sslverify'   => true,
         ];

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, uniqueIndex, integer, pgEnum, pgPolicy, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer, pgEnum, pgPolicy, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "./user";
 
@@ -16,7 +16,6 @@ export const project = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  ownerUnique: uniqueIndex("projects_owner_unique").on(table.ownerId),
   ownerIdx: index("projects_owner_idx").on(table.ownerId),
 })).enableRLS();
 

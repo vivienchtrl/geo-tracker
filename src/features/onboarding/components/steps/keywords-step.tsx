@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ArrowRight, Search, Plus, X, Sparkles, Loader2 } from "lucide-react"
 import type { KeywordsStepData, KeywordItem } from "../../types"
 import { suggestQueryForKeywordAction } from "../../actions"
-import { toast } from "sonner"
 import { cn } from "@/utils/utils"
 
 interface KeywordsStepProps {
