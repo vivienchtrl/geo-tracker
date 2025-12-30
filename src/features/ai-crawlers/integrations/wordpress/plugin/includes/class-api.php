@@ -79,7 +79,7 @@ class Geo_Tracker_API {
     }
 
     /**
-     * Test API connection
+     * Test API connection test ping
      *
      * @return array Result with success status and message
      */
