@@ -92,6 +92,16 @@ class Geo_Tracker_Bot_Detector {
             }
         }
 
+        // Capture tous les autres bots inconnus
+        if (preg_match('/bot|crawl|spider|agent|fetch|curl|wget|python|http/i', $this->user_agent)) {
+            preg_match('/^([A-Za-z0-9_.-]+)/', $this->user_agent, $m);
+            return [
+                'name'     => $m[1] ?? 'Unknown',
+                'category' => 'other',
+                'company'  => 'Unknown',
+            ];
+        }
+
         return null;
     }
 
