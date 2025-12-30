@@ -31,7 +31,7 @@ class Geo_Tracker_API {
      */
     public function __construct($api_key) {
         $this->api_key = $api_key;
-        $this->endpoint = get_option('geo_tracker_endpoint', 'https://prexia.vercel.app/api/v1/crawlers/log');
+        $this->endpoint = get_option('geo_tracker_endpoint', 'https://geo-tracker.com/api/v1/crawlers/log');
     }
 
     /**
