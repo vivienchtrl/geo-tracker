@@ -99,7 +99,7 @@ export const crawlerVisitSchema = z.object({
   city: z.string().max(100).optional().nullable(),
 
   // Headers (filtered, not all - JSONB in DB)
-  headers: z.record(z.string(), z.string()).optional().nullable(),
+  headers: z.record(z.string(), z.string().nullable()).optional().nullable(),
 
   // Body snippets (size-limited for storage efficiency)
   requestBody: z
