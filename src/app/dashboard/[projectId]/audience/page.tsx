@@ -4,10 +4,8 @@ import { getProjectById } from "@/backend/services/project-service"
 import { getIcpProfilesByProject } from "@/backend/services/icp-profiles"
 import { getDashboardAnalytics } from "@/backend/services/dashboard.service"
 import { IcpManager } from "@/features/icp/components/icp-manager"
-import { GeoDistribution } from "@/features/analytics/components/geo-distribution"
 import { DeviceBreakdown } from "@/features/analytics/components/device-breakdown"
 import { ReferrerBreakdown } from "@/features/analytics/components/referrer-breakdown"
-import { Skeleton } from "@/components/ui/skeleton"
 
 interface AudiencePageProps {
   params: Promise<{ projectId: string }>
@@ -50,31 +48,13 @@ export default async function AudiencePage({ params }: AudiencePageProps) {
           </div>
         </div>
 
-        {/* Geo Distribution */}
-        <div className="grid lg:grid-cols-2 gap-0">
-          <div className="border-r border-dashed border-border/80">
-            <GeoDistribution 
-              data={dashboardAnalytics.locationBreakdown || []} 
-              title="Top Countries"
-              description="User distribution by national borders"
-            />
-          </div>
-          <div>
-            <GeoDistribution 
-              data={dashboardAnalytics.locationBreakdown || []} 
-              title="Regional Hotspots"
-              description="High-density traffic zones"
-            />
-          </div>
-        </div>
-      </div>
-
       {/* ICP Settings Section */}
       <div className="flex-1 bg-muted/5">
          <div className="px-8 py-6 border-b border-dashed border-border/80">
             <h2 className="text-xl font-bold uppercase tracking-tight">Ideal Customer Profiles (ICP)</h2>
          </div>
          <IcpManager initialIcpProfiles={icpProfiles} />
+      </div>
       </div>
     </div>
   )

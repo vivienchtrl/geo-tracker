@@ -162,7 +162,7 @@ export function RecentVisitsTable({
                 <TableCell>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Globe className="h-3 w-3" />
-                    {visit.countryCode || visit.country || "-"}
+                    {visit.source || "-"}
                   </div>
                 </TableCell>
                 <TableCell className="text-right">

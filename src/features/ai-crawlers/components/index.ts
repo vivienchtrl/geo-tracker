@@ -11,9 +11,8 @@ export { IntegrationSnippets } from "./integration-snippets";
 // Dashboard components
 export { AICrawlersDashboard } from "./ai-crawlers-dashboard";
 export { AICrawlersMetrics } from "./ai-crawlers-metrics";
-export { AICrawlersFilters } from "./ai-crawlers-filters";
 export { RecentVisitsTable } from "./recent-visits-table";
 
 // Charts
 export { CrawlersTimelineChart } from "./charts/crawlers-timeline-chart";
-export { BotBreakdownChart } from "./charts/bot-breakdown-chart";
+export { MentionsTimelineChart } from "./charts/mentions-timeline-chart";

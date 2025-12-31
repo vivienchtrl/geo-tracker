@@ -4,7 +4,7 @@ import { eq, desc } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 import type { User, Project, Keyword, IcpProfile, AiSearch } from "@/types/db"
 import { DashboardFilters } from "@/types/dashboard"
-import { getTrafficByDevice, getTrafficByLocation, getTrafficByReferrer, getBotActivity, getAISearchStats, getTrafficBySocial } from "./analytics.service"
+import { getTrafficByDevice, getTrafficByReferrer, getBotActivity, getAISearchStats, getTrafficBySocial } from "./analytics.service"
 
 export type DashboardContext = {
   user: User
@@ -22,8 +22,6 @@ export type DashboardAnalytics = {
   dashboardAnalytics: never[]
   // Detailed analytics from crawler visits
   deviceBreakdown: Awaited<ReturnType<typeof getTrafficByDevice>>
-  locationBreakdown: Awaited<ReturnType<typeof getTrafficByLocation>>
-  cityBreakdown: Awaited<ReturnType<typeof getTrafficByLocation>>
   referrerBreakdown: Awaited<ReturnType<typeof getTrafficByReferrer>>
   socialBreakdown: Awaited<ReturnType<typeof getTrafficBySocial>>
   botActivity: Awaited<ReturnType<typeof getBotActivity>>
@@ -141,10 +139,8 @@ export const getDashboardAnalytics = async (projectId: string, filters: Dashboar
 
   return await unstable_cache(
     async () => {
-      const [device, location, city, referrers, social, bots, aiStats] = await Promise.all([
+      const [device, referrers, social, bots, aiStats] = await Promise.all([
         getTrafficByDevice(projectId, filters),
-        getTrafficByLocation(projectId, 'country', filters),
-        getTrafficByLocation(projectId, 'city', filters),
         getTrafficByReferrer(projectId, filters),
         getTrafficBySocial(projectId, filters),
         getBotActivity(projectId, filters),
@@ -153,8 +149,6 @@ export const getDashboardAnalytics = async (projectId: string, filters: Dashboar
 
       return {
         deviceBreakdown: device,
-        locationBreakdown: location,
-        cityBreakdown: city,
         referrerBreakdown: referrers,
         socialBreakdown: social,
         botActivity: bots,

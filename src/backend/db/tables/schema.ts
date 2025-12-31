@@ -6,7 +6,6 @@ export * from "./integrations";
 export * from "./ai-search";
 export * from "./icp-profile";
 export * from "./user";
-export * from "./ai-crawler-logs";
 // API Keys & Crawler Visits
 export * from "./api-keys";
 export * from "./crawler-visits";

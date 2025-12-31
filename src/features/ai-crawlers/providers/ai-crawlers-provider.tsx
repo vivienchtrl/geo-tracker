@@ -28,6 +28,7 @@ import type {
   AICrawlersFilters,
   CrawlerKPIs,
   TimelineData,
+  MentionsData,
   BotBreakdownData,
 } from "../types";
 import { getCrawlerVisitsAction } from "../actions";
@@ -44,6 +45,7 @@ interface AICrawlersProviderProps {
     hasMore: boolean;
     kpis: CrawlerKPIs;
     timeline: TimelineData[];
+    mentionsTimeline: MentionsData[];
     botBreakdown: BotBreakdownData[];
   };
   initialFilters?: AICrawlersFilters;
@@ -67,11 +69,10 @@ export function AICrawlersProvider({
   // State: Data
   const [visits, setVisits] = useState<CrawlerVisit[]>(initialData.visits);
   const [hasMore, setHasMore] = useState(initialData.hasMore);
-  const [kpis, setKpis] = useState<CrawlerKPIs>(initialData.kpis);
-  const [timeline, setTimeline] = useState<TimelineData[]>(initialData.timeline);
-  const [botBreakdown, setBotBreakdown] = useState<BotBreakdownData[]>(
-    initialData.botBreakdown
-  );
+  const [kpis] = useState<CrawlerKPIs>(initialData.kpis);
+  const [timeline] = useState<TimelineData[]>(initialData.timeline);
+  const [mentionsTimeline] = useState<MentionsData[]>(initialData.mentionsTimeline);
+  const [botBreakdown] = useState<BotBreakdownData[]>(initialData.botBreakdown);
 
   // State: Loading
   const [isLoading, setIsLoading] = useState(false);
@@ -140,8 +141,6 @@ export function AICrawlersProvider({
 
     try {
       const result = await getCrawlerVisitsAction(projectId, {
-        startDate: filters.startDate,
-        endDate: filters.endDate,
         botName: filters.botName,
         botCategory: filters.botCategory,
         offset: visits.length,
@@ -169,8 +168,6 @@ export function AICrawlersProvider({
 
     try {
       const result = await getCrawlerVisitsAction(projectId, {
-        startDate: filters.startDate,
-        endDate: filters.endDate,
         botName: filters.botName,
         botCategory: filters.botCategory,
         limit: 20,
@@ -201,6 +198,7 @@ export function AICrawlersProvider({
       error,
       kpis,
       timeline,
+      mentionsTimeline,
       botBreakdown,
       updateFilters,
       selectBot,
@@ -220,6 +218,7 @@ export function AICrawlersProvider({
       error,
       kpis,
       timeline,
+      mentionsTimeline,
       botBreakdown,
       updateFilters,
       selectBot,

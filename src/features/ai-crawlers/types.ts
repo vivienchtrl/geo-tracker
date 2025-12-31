@@ -5,7 +5,6 @@
  * Imported by components, providers, and hooks
  */
 
-import type { DashboardFilters } from "@/types/dashboard";
 import type { CrawlerVisit } from "@/types/db";
 
 /**
@@ -29,6 +28,7 @@ export type AICrawlersContextType = {
 
   // Chart Data
   timeline: TimelineData[];
+  mentionsTimeline: MentionsData[];
   botBreakdown: BotBreakdownData[];
 
   // Filter Actions
@@ -44,10 +44,7 @@ export type AICrawlersContextType = {
 /**
  * Filters specific to AI Crawlers
  */
-export type AICrawlersFilters = Pick<
-  DashboardFilters,
-  "dateRange" | "startDate" | "endDate"
-> & {
+export type AICrawlersFilters = {
   botName?: string;
   botCategory?: string;
 };
@@ -64,13 +61,23 @@ export type CrawlerKPIs = {
 };
 
 /**
- * Timeline chart data
+ * Timeline chart data - stacked by bot
+ * Each entry has a date and count per bot
  */
 export type TimelineData = {
   date: string;
-  total: number;
-  aiCrawlers: number;
-  mentioned: number;
+  crawlers: number;
+  userMentions: number;
+  searchMentions: number;
+  [botName: string]: string | number;
+};
+
+/**
+ * Mentions timeline data
+ */
+export type MentionsData = {
+  date: string;
+  mentions: number;
 };
 
 /**

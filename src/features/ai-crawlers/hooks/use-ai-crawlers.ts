@@ -80,8 +80,8 @@ export function useAICrawlersKPIs() {
  * Hook to get chart data
  */
 export function useAICrawlersCharts() {
-  const { timeline, botBreakdown } = useAICrawlers();
-  return { timeline, botBreakdown };
+  const { timeline, mentionsTimeline, botBreakdown } = useAICrawlers();
+  return { timeline, mentionsTimeline, botBreakdown };
 }
 
 /**

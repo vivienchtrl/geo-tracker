@@ -69,15 +69,10 @@ export async function captureCrawlerVisit(
     responseStatus: data.responseStatus,
     responseTime: data.responseTime,
     ipHash,
-    countryCode: data.countryCode,
-    country: data.country,
-    region: data.region,
-    city: data.city,
     headers: data.headers,
     requestBody: data.requestBody?.slice(0, 1000),
     responseBodySnippet: data.responseBodySnippet?.slice(0, 2000),
     siteMentioned: data.visitType === "user_mention" ? true : (data.siteMentioned || false),
-    mentionContext: data.mentionContext?.slice(0, 500),
     source: data.source || "cloudflare",
     timestamp: new Date(data.timestamp),
   });
@@ -199,19 +194,20 @@ export const getCrawlerKPIs = unstable_cache(
 );
 
 /**
- * Get timeline data for the chart
+ * Get timeline data for the chart - grouped by date and bot
+ * Returns data with crawlers, userMentions, searchMentions counts plus per-bot breakdown
  */
 export const getCrawlerTimeline = unstable_cache(
   async (
     projectId: string,
-    options: { startDate?: Date; endDate?: Date } = {}
+    options: { startDate?: Date; endDate?: Date; days?: number } = {}
   ) => {
-    const { startDate, endDate } = options;
+    const { startDate, endDate, days = 30 } = options;
 
     const conditions = [eq(crawlerVisits.projectId, projectId)];
 
     const defaultStartDate = new Date();
-    defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+    defaultStartDate.setDate(defaultStartDate.getDate() - days);
 
     if (startDate) {
       conditions.push(gte(crawlerVisits.timestamp, startDate));
@@ -223,25 +219,108 @@ export const getCrawlerTimeline = unstable_cache(
       conditions.push(lte(crawlerVisits.timestamp, endDate));
     }
 
+    // Get raw data grouped by date, bot, and visitType
+    const rawData = await db
+      .select({
+        date: sql<string>`DATE(${crawlerVisits.timestamp})`,
+        botName: crawlerVisits.botName,
+        visitType: crawlerVisits.visitType,
+        count: dbCount(),
+      })
+      .from(crawlerVisits)
+      .where(and(...conditions))
+      .groupBy(
+        sql`DATE(${crawlerVisits.timestamp})`,
+        crawlerVisits.botName,
+        crawlerVisits.visitType
+      )
+      .orderBy(sql`DATE(${crawlerVisits.timestamp})`);
+
+    // Pivot data: group by date
+    const dateMap = new Map<string, {
+      date: string;
+      crawlers: number;
+      userMentions: number;
+      searchMentions: number;
+      [botName: string]: string | number;
+    }>();
+
+    for (const row of rawData) {
+      if (!dateMap.has(row.date)) {
+        dateMap.set(row.date, {
+          date: row.date,
+          crawlers: 0,
+          userMentions: 0,
+          searchMentions: 0,
+        });
+      }
+      const dateEntry = dateMap.get(row.date)!;
+      const count = Number(row.count);
+
+      // Add to bot count
+      dateEntry[row.botName] = (dateEntry[row.botName] as number || 0) + count;
+
+      // Add to visitType totals
+      if (row.visitType === "crawler") {
+        dateEntry.crawlers += count;
+      } else if (row.visitType === "user_mention") {
+        dateEntry.userMentions += count;
+      } else if (row.visitType === "search") {
+        dateEntry.searchMentions += count;
+      }
+    }
+
+    return Array.from(dateMap.values());
+  },
+  ["crawler-timeline"],
+  { revalidate: 300, tags: ["crawler-visits"] }
+);
+
+/**
+ * Get mentions timeline for the line chart
+ * Returns data in format: [{ date: "2024-01-01", mentions: 5 }]
+ */
+export const getMentionsTimeline = unstable_cache(
+  async (
+    projectId: string,
+    options: { startDate?: Date; endDate?: Date; days?: number } = {}
+  ) => {
+    const { startDate, endDate, days = 30 } = options;
+
+    const conditions = [eq(crawlerVisits.projectId, projectId)];
+
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() - days);
+
+    if (startDate) {
+      conditions.push(gte(crawlerVisits.timestamp, startDate));
+    } else {
+      conditions.push(gte(crawlerVisits.timestamp, defaultStartDate));
+    }
+
+    if (endDate) {
+      conditions.push(lte(crawlerVisits.timestamp, endDate));
+    }
+
+    // Only count visits where site was mentioned
+    conditions.push(eq(crawlerVisits.siteMentioned, true));
+
     const timeline = await db
       .select({
         date: sql<string>`DATE(${crawlerVisits.timestamp})`,
-        total: dbCount(),
-        aiCrawlers: dbCount(
-          sql`CASE WHEN ${crawlerVisits.botCategory} = 'ai_crawler' THEN 1 END`
-        ),
-        mentioned: dbCount(
-          sql`CASE WHEN ${crawlerVisits.siteMentioned} = true THEN 1 END`
-        ),
+        mentions: dbCount(),
       })
       .from(crawlerVisits)
       .where(and(...conditions))
       .groupBy(sql`DATE(${crawlerVisits.timestamp})`)
       .orderBy(sql`DATE(${crawlerVisits.timestamp})`);
 
-    return timeline;
+    return timeline.map((row) => ({
+      date: row.date,
+      mentions: Number(row.mentions),
+    }));
   },
-  ["crawler-timeline"],
+  ["crawler-mentions-timeline"],
   { revalidate: 300, tags: ["crawler-visits"] }
 );
 

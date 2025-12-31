@@ -12,6 +12,7 @@ import {
   getCrawlerVisits,
   getCrawlerKPIs,
   getCrawlerTimeline,
+  getMentionsTimeline,
   getBotBreakdown,
 } from "@/backend/services/crawler-visits.service";
 import { AICrawlersProvider } from "@/features/ai-crawlers/providers/ai-crawlers-provider";
@@ -20,8 +21,7 @@ import { AICrawlersDashboard } from "@/features/ai-crawlers/components/ai-crawle
 interface AICrawlersPageProps {
   params: Promise<{ projectId: string }>;
   searchParams: Promise<{
-    startDate?: string;
-    endDate?: string;
+    days?: string;
     botName?: string;
     botCategory?: string;
   }>;
@@ -40,22 +40,25 @@ export default async function AICrawlersPage({
   const projectData = await getProjectWithRole(projectId, user.id);
   if (!projectData) notFound();
 
-  // Parse date filters
-  const startDate = search.startDate ? new Date(search.startDate) : undefined;
-  const endDate = search.endDate ? new Date(search.endDate) : undefined;
+  // Parse days filter (default to 7)
+  const days = search.days ? parseInt(search.days, 10) : 7;
+
+  // Calculate start date from days
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
 
   // Fetch all data in parallel
-  const [visitsData, kpis, timeline, botBreakdown] = await Promise.all([
+  const [visitsData, kpis, timeline, mentionsTimeline, botBreakdown] = await Promise.all([
     getCrawlerVisits(projectId, {
       startDate,
-      endDate,
       botName: search.botName,
       botCategory: search.botCategory,
       limit: 20,
     }),
-    getCrawlerKPIs(projectId, { startDate, endDate }),
-    getCrawlerTimeline(projectId, { startDate, endDate }),
-    getBotBreakdown(projectId, { startDate, endDate }),
+    getCrawlerKPIs(projectId, { startDate }),
+    getCrawlerTimeline(projectId, { days }),
+    getMentionsTimeline(projectId, { days }),
+    getBotBreakdown(projectId, { startDate }),
   ]);
 
   return (
@@ -81,13 +84,12 @@ export default async function AICrawlersPage({
         initialData={{
           visits: visitsData.visits,
           hasMore: visitsData.hasMore,
-          kpis,
+          kpis, 
           timeline,
+          mentionsTimeline,
           botBreakdown,
         }}
         initialFilters={{
-          startDate,
-          endDate,
           botName: search.botName,
           botCategory: search.botCategory,
         }}

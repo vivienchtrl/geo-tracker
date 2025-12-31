@@ -72,37 +72,6 @@ export const getTrafficByDevice = async (projectId: string, filters: DashboardFi
 };
 
 /**
- * Get Traffic breakdown by Location (Country)
- */
-export const getTrafficByLocation = async (projectId: string, type: "country" | "region" | "city" = "country", filters: DashboardFilters) => {
-  const cacheKey = `traffic-by-location-${type}-${projectId}-${JSON.stringify(filters)}`;
-
-  return await unstable_cache(
-    async () => {
-      const conditions = buildCrawlerFilters(projectId, filters);
-
-      const column = type === "country" ? crawlerVisits.country :
-                     type === "region" ? crawlerVisits.region : crawlerVisits.city;
-      const codeColumn = type === "country" ? crawlerVisits.countryCode : null;
-
-      return await db
-        .select({
-          name: column,
-          ...(codeColumn ? { code: codeColumn } : {}),
-          count: sql<number>`COUNT(*)`,
-        })
-        .from(crawlerVisits)
-        .where(and(...conditions))
-        .groupBy(column, ...(codeColumn ? [codeColumn] : []))
-        .orderBy(desc(sql<number>`COUNT(*)`))
-        .limit(10);
-    },
-    [cacheKey],
-    { revalidate: 3600, tags: [`analytics-${projectId}`, "crawler-visits"] }
-  )();
-};
-
-/**
  * Get Traffic breakdown by Path (referrer equivalent)
  */
 export const getTrafficByReferrer = async (projectId: string, filters: DashboardFilters) => {

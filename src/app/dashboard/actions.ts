@@ -357,11 +357,6 @@ export async function getDashboardData(): Promise<DashboardMetrics> {
       deviceType: d.deviceType || '',
       count: d.count
     })),
-    locationBreakdown: crawlerAnalytics.locationBreakdown.map((l) => ({
-      name: l.name || '',
-      code: l.code || undefined,
-      count: l.count
-    })),
     referrerBreakdown: crawlerAnalytics.referrerBreakdown.map((r) => ({
       referrer: r.referrer || '',
       count: r.count

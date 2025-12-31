@@ -97,16 +97,6 @@ export const crawlerVisitSchema = z.object({
     .optional()
     .nullable(),
 
-  // Geolocation (from Cloudflare headers or IP lookup)
-  countryCode: z
-    .string()
-    .length(2, "Country code must be 2 characters")
-    .optional()
-    .nullable(),
-  country: z.string().max(100).optional().nullable(),
-  region: z.string().max(100).optional().nullable(),
-  city: z.string().max(100).optional().nullable(),
-
   // Headers (filtered, not all - JSONB in DB)
   headers: z.record(z.string(), z.string().nullable()).optional().nullable(),
 
@@ -124,11 +114,6 @@ export const crawlerVisitSchema = z.object({
 
   // Site mention detection
   siteMentioned: z.boolean().optional().nullable().default(false),
-  mentionContext: z
-    .string()
-    .max(500, "Mention context must be < 500 chars")
-    .optional()
-    .nullable(),
 
   // Bot category (optional, can be auto-detected)
   botCategory: botCategoryEnum.optional().nullable(),

@@ -6,18 +6,16 @@
  * Assembles all components:
  * - Filters
  * - Metrics (KPI Cards)
- * - Timeline Chart
- * - Bot Breakdown Chart
+ * - Stacked Bot Timeline Chart
  * - Recent Visits Table
  *
  * Uses AICrawlersProvider context for state management
  */
 
 import { Suspense } from "react";
-import { AICrawlersFilters } from "./ai-crawlers-filters";
 import { AICrawlersMetrics } from "./ai-crawlers-metrics";
 import { CrawlersTimelineChart } from "./charts/crawlers-timeline-chart";
-import { BotBreakdownChart } from "./charts/bot-breakdown-chart";
+import { MentionsTimelineChart } from "./charts/mentions-timeline-chart";
 import { RecentVisitsTable } from "./recent-visits-table";
 import {
   useAICrawlers,
@@ -30,19 +28,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function AICrawlersDashboard() {
   const { visits } = useAICrawlers();
   const kpis = useAICrawlersKPIs();
-  const { timeline, botBreakdown } = useAICrawlersCharts();
+  const { timeline, mentionsTimeline, botBreakdown } = useAICrawlersCharts();
   const { hasMore, isLoadingMore, loadMore } = useAICrawlersPagination();
 
-  // Get unique bot names for filter
+  // Get unique bot names from breakdown
   const uniqueBots = [...new Set(botBreakdown.map((b) => b.botName))];
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Filters Section */}
-      <Suspense fallback={<FilterSkeleton />}>
-        <AICrawlersFilters bots={uniqueBots} />
-      </Suspense>
-
       {/* KPI Metrics */}
       <Suspense fallback={<MetricsSkeleton />}>
         <AICrawlersMetrics
@@ -54,33 +47,33 @@ export function AICrawlersDashboard() {
         />
       </Suspense>
 
-      {/* Main Grid */}
-      <div className="flex-1 flex flex-col">
-        {/* Row 1: Timeline + Bot Breakdown */}
-        <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
-          <div className="lg:col-span-8 border-r border-dashed border-border/80">
-            <Suspense fallback={<ChartSkeleton />}>
-              <CrawlersTimelineChart data={timeline} />
-            </Suspense>
-          </div>
-          <div className="lg:col-span-4">
-            <Suspense fallback={<ChartSkeleton />}>
-              <BotBreakdownChart data={botBreakdown} />
-            </Suspense>
-          </div>
-        </div>
-
-        {/* Row 2: Recent Visits Table */}
-        <div className="border-b border-dashed border-border/80">
-          <Suspense fallback={<TableSkeleton />}>
-            <RecentVisitsTable
-              visits={visits}
-              hasMore={hasMore}
-              onLoadMore={loadMore}
-              isLoadingMore={isLoadingMore}
-            />
+      {/* Charts Row */}
+      <div className="grid gap-0 lg:grid-cols-2 border-b border-dashed border-border/80">
+        {/* Crawler Activity Chart */}
+        <div className="border-r border-dashed border-border/80">
+          <Suspense fallback={<ChartSkeleton />}>
+            <CrawlersTimelineChart data={timeline} bots={uniqueBots} />
           </Suspense>
         </div>
+
+        {/* AI Mentions Chart */}
+        <div>
+          <Suspense fallback={<ChartSkeleton />}>
+            <MentionsTimelineChart data={mentionsTimeline} />
+          </Suspense>
+        </div>
+      </div>
+
+      {/* Recent Visits Table */}
+      <div className="border-b border-dashed border-border/80">
+        <Suspense fallback={<TableSkeleton />}>
+          <RecentVisitsTable
+            visits={visits}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            isLoadingMore={isLoadingMore}
+          />
+        </Suspense>
       </div>
     </div>
   );
@@ -89,19 +82,6 @@ export function AICrawlersDashboard() {
 /**
  * Loading Skeletons
  */
-
-function FilterSkeleton() {
-  return (
-    <div className="px-8 py-6 border-b border-dashed border-border/80 space-y-4">
-      <div className="h-4 w-12 bg-muted rounded animate-pulse" />
-      <div className="grid gap-3 md:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-9" />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function MetricsSkeleton() {
   return (
@@ -126,7 +106,7 @@ function ChartSkeleton() {
     <div className="px-8 py-6">
       <div className="space-y-4">
         <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-[300px] w-full" />
+        <Skeleton className="h-[350px] w-full" />
       </div>
     </div>
   );

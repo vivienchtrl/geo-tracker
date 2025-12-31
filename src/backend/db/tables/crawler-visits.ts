@@ -59,12 +59,6 @@ export const crawlerVisits = pgTable(
     // Client Information (privacy-compliant)
     ipHash: text("ip_hash").notNull(), // SHA256(IP + salt)
 
-    // Geolocation (from Cloudflare or IP lookup)
-    countryCode: text("country_code"), // 'US', 'FR'
-    country: text("country"),
-    region: text("region"),
-    city: text("city"),
-
     // Headers (JSONB for flexibility - filtered, not all headers)
     headers: jsonb("headers"), // { 'Accept': 'text/html', 'CF-Ray': '...' }
 
@@ -74,7 +68,6 @@ export const crawlerVisits = pgTable(
 
     // Site Mention Detection
     siteMentioned: boolean("site_mentioned").default(false),
-    mentionContext: text("mention_context"), // Extracted context around mention
 
     // Source tracking (which integration sent this)
     source: text("source").default("cloudflare"), // 'cloudflare', 'wordpress', 'vercel', 'custom'
@@ -105,12 +98,6 @@ export const crawlerVisits = pgTable(
     projectStatusIdx: index("crawler_visits_project_status_idx").on(
       table.projectId,
       table.responseStatus,
-      table.timestamp
-    ),
-    // Geographic analysis
-    projectCountryIdx: index("crawler_visits_project_country_idx").on(
-      table.projectId,
-      table.countryCode,
       table.timestamp
     ),
     // Site mention queries

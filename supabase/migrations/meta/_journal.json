@@ -15,6 +15,13 @@
       "when": 1767103585179,
       "tag": "0001_chunky_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767177562224,
+      "tag": "0002_parched_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

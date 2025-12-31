@@ -283,15 +283,6 @@ export async function getDashboardDataForProject(projectId: string, filters: Das
       deviceType: d.deviceType || 'unknown',
       count: d.count
     })),
-    locationBreakdown: crawlerAnalytics.locationBreakdown.map((l) => ({
-      name: l.name || 'unknown',
-      code: l.code || undefined,
-      count: l.count
-    })),
-    cityBreakdown: crawlerAnalytics.cityBreakdown.map((c) => ({
-      name: c.name || 'unknown',
-      count: c.count
-    })),
     referrerBreakdown: crawlerAnalytics.referrerBreakdown.map((r) => ({
       referrer: r.referrer || 'unknown',
       count: r.count
