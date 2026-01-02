@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm"
 import { revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { updateProjectSchema } from "@/backend/validators/project.validators"
+import { updateProjectSchema, updateEnabledLlmSchema, type LlmService } from "@/backend/validators/project.validators"
 
 // Helper to get session - could be moved to a shared auth util
 async function getSessionUser() {
@@ -44,11 +44,46 @@ export async function updateProjectNameAction(projectId: string, newName: string
 
     // 3. Cache Invalidation
     revalidateTag(`dashboard-${user.id}`, 'page')
-    revalidateTag('project', 'page') 
-    
+    revalidateTag('project', 'page')
+
     return { success: true }
   } catch (error) {
     console.error("Failed to update project", error)
     return { success: false, error: "Failed to update project" }
+  }
+}
+
+export async function updateEnabledLlmAction(projectId: string, enabledLlm: LlmService[]) {
+  try {
+    const user = await getSessionUser()
+
+    // 1. Validation
+    const validation = updateEnabledLlmSchema.safeParse({ enabledLlm })
+
+    if (!validation.success) {
+      return {
+        success: false,
+        error: "Invalid LLM configuration",
+        validationErrors: validation.error.flatten().fieldErrors
+      }
+    }
+
+    // 2. Database Update
+    await db.update(project)
+      .set({
+        enabledLlm: validation.data.enabledLlm,
+        updatedAt: new Date()
+      })
+      .where(eq(project.id, projectId))
+
+    // 3. Cache Invalidation
+    revalidateTag(`dashboard-${user.id}`, 'page')
+    revalidateTag('project', 'page')
+    revalidateTag(`project-${projectId}`, 'page')
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to update enabled LLMs", error)
+    return { success: false, error: "Failed to update enabled LLMs" }
   }
 }

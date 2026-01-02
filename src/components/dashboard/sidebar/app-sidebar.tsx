@@ -77,6 +77,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive: pathname.startsWith(`/dashboard/${projectId}/ai-crawlers`),
     },
     {
+      title: "Web Analytics",
+      url: `/dashboard/${projectId}/analytics`,
+      icon: IconChartBar,
+      isActive: pathname.startsWith(`/dashboard/${projectId}/analytics`),
+    },
+    {
       title: "Competitors",
       url: `/dashboard/${projectId}/competitors`,
       icon: IconSearch,

@@ -1,156 +1,360 @@
 "use client";
 
 /**
- * Analytics Dashboard Shell (Human Traffic)
+ * Analytics Dashboard - Vercel Style
  *
- * Assembles all components:
- * - Filters
- * - Metrics (KPI Cards)
- * - Timeline Chart
- * - Device Breakdown
- * - Geo Distribution
- * - Referrer Breakdown
- * - Recent Visits Table
- *
- * Uses AnalyticsProvider context for state management
+ * Layout:
+ * - Time period selector at top (7d, 30d, 90d, 12m)
+ * - Area chart showing traffic over time
+ * - Tabbed breakdown section (Pages, Referrers, Countries, Devices, OS, Browsers, UTM)
  */
 
-import { Suspense } from "react";
-import { AnalyticsFilters } from "./analytics-filters";
-import { AnalyticsMetrics } from "./analytics-metrics";
-import { TrafficOverviewChart } from "./traffic-overview-chart";
-import { DeviceBreakdown } from "./device-breakdown";
-import { GeoDistribution } from "./geo-distribution";
-import { ReferrerBreakdown } from "./referrer-breakdown";
-import { RecentVisitsTable } from "./recent-visits-table";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   useAnalytics,
   useAnalyticsKPIs,
   useAnalyticsCharts,
-  useAnalyticsPagination,
 } from "../hooks/use-analytics";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/utils/utils";
+import type { AnalyticsTimePeriod } from "../types";
+
+const chartConfig = {
+  visitors: {
+    label: "Visitors",
+    color: "var(--chart-1)",
+  },
+  pageviews: {
+    label: "Pageviews",
+    color: "var(--chart-2)",
+  },
+} satisfies ChartConfig;
+
+const timePeriods: { value: AnalyticsTimePeriod; label: string }[] = [
+  { value: "7d", label: "7D" },
+  { value: "30d", label: "30D" },
+  { value: "90d", label: "3M" },
+  { value: "12m", label: "12M" },
+];
 
 export function AnalyticsDashboard() {
-  const { visits } = useAnalytics();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { timePeriod } = useAnalytics();
   const kpis = useAnalyticsKPIs();
-  const { timeline, deviceBreakdown, geoBreakdown, referrerBreakdown } = useAnalyticsCharts();
-  const { hasMore, isLoadingMore, loadMore } = useAnalyticsPagination();
+  const { timeline, pathBreakdown, referrerBreakdown, geoBreakdown, deviceBreakdown, osBreakdown, browserBreakdown, sourceBreakdown } = useAnalyticsCharts();
+  const [activeTab, setActiveTab] = useState("pages");
+
+  const handlePeriodChange = (period: AnalyticsTimePeriod) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("period", period);
+    router.push(`?${params.toString()}`);
+  };
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Filters Section */}
-      <Suspense fallback={<FilterSkeleton />}>
-        <AnalyticsFilters />
-      </Suspense>
-
-      {/* KPI Metrics */}
-      <Suspense fallback={<MetricsSkeleton />}>
-        <AnalyticsMetrics
-          totalVisits={kpis.totalVisits}
-          uniqueVisitors={kpis.uniqueVisitors}
-          pageviews={kpis.pageviews}
-          avgTimeOnPage={kpis.avgTimeOnPage}
-          bounceRate={kpis.bounceRate}
-        />
-      </Suspense>
-
-      {/* Main Grid */}
-      <div className="flex-1 flex flex-col">
-        {/* Row 1: Traffic Timeline */}
-        <div className="border-b border-dashed border-border/80">
-          <Suspense fallback={<ChartSkeleton />}>
-            <div className="px-8 py-6">
-              <TrafficOverviewChart
-                data={timeline.map((t) => ({
-                  date: t.date,
-                  sessions: t.visits,
-                  aiReferrals: 0,
-                }))}
-              />
+      {/* Time Period Selector + KPIs */}
+      <div className="px-8 py-6 border-b border-dashed border-border/80">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-1 p-1 bg-muted/30 border border-dashed border-border/80 rounded-lg">
+            {timePeriods.map((period) => (
+              <button
+                key={period.value}
+                onClick={() => handlePeriodChange(period.value)}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                  timePeriod === period.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-6 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-chart-1" />
+              <span className="text-muted-foreground">Visitors</span>
             </div>
-          </Suspense>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-chart-2" />
+              <span className="text-muted-foreground">Pageviews</span>
+            </div>
+          </div>
         </div>
 
-        {/* Row 2: Device + Geo + Referrer */}
-        <div className="grid gap-0 lg:grid-cols-12 border-b border-dashed border-border/80">
-          <div className="lg:col-span-4 border-r border-dashed border-border/80">
-            <Suspense fallback={<ChartSkeleton />}>
-              <DeviceBreakdown
-                data={deviceBreakdown.map((d) => ({
-                  deviceType: d.deviceType,
-                  count: d.count,
-                }))}
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPICard label="Total Visitors" value={kpis.uniqueVisitors.toLocaleString()} />
+          <KPICard label="Total Pageviews" value={kpis.pageviews.toLocaleString()} />
+          <KPICard label="Bounce Rate" value={`${kpis.bounceRate}%`} />
+          <KPICard label="Avg. Time on Page" value={formatDuration(kpis.avgTimeOnPage)} />
+        </div>
+      </div>
+
+      {/* Main Chart */}
+      <div className="px-8 py-6 border-b border-dashed border-border/80">
+        <Suspense fallback={<ChartSkeleton />}>
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <AreaChart
+              data={timeline.map((t) => ({
+                date: t.date,
+                visitors: t.uniqueVisitors,
+                pageviews: t.pageviews,
+              }))}
+              margin={{ left: 0, right: 0, top: 10, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="fillVisitors" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-visitors)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--color-visitors)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="fillPageviews" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-pageviews)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--color-pageviews)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                }}
+                className="text-xs text-muted-foreground"
               />
-            </Suspense>
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={40}
+                tickFormatter={(value) => value.toLocaleString()}
+                className="text-xs text-muted-foreground"
+              />
+              <ChartTooltip
+                cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
+                content={<ChartTooltipContent />}
+              />
+              <Area
+                dataKey="visitors"
+                type="monotone"
+                fill="url(#fillVisitors)"
+                stroke="var(--color-visitors)"
+                strokeWidth={2}
+              />
+              <Area
+                dataKey="pageviews"
+                type="monotone"
+                fill="url(#fillPageviews)"
+                stroke="var(--color-pageviews)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ChartContainer>
+        </Suspense>
+      </div>
+
+      {/* Tabbed Breakdown Section */}
+      <div className="flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="px-8 py-4 border-b border-dashed border-border/80">
+            <TabsList variant="line">
+              <TabsTrigger value="pages">Pages</TabsTrigger>
+              <TabsTrigger value="referrers">Referrers</TabsTrigger>
+              <TabsTrigger value="countries">Countries</TabsTrigger>
+              <TabsTrigger value="devices">Devices</TabsTrigger>
+              <TabsTrigger value="os">OS</TabsTrigger>
+              <TabsTrigger value="browsers">Browsers</TabsTrigger>
+              <TabsTrigger value="utm">UTM</TabsTrigger>
+            </TabsList>
           </div>
-          <div className="lg:col-span-4 border-r border-dashed border-border/80">
-            <Suspense fallback={<ChartSkeleton />}>
-              <GeoDistribution
+
+          <div className="px-8 py-6">
+            <TabsContent value="pages">
+              <BreakdownTable
+                data={pathBreakdown.map((p) => ({
+                  name: p.path,
+                  subtitle: p.title !== p.path ? p.title : undefined,
+                  value: p.views,
+                  secondary: p.uniqueViews,
+                  percentage: p.percentage,
+                }))}
+                columns={["Path", "Views", "Uniques", "%"]}
+              />
+            </TabsContent>
+
+            <TabsContent value="referrers">
+              <BreakdownTable
+                data={referrerBreakdown.map((r) => ({
+                  name: r.referrerDomain,
+                  value: r.count,
+                  percentage: r.percentage,
+                }))}
+                columns={["Referrer", "Visitors", "%"]}
+              />
+            </TabsContent>
+
+            <TabsContent value="countries">
+              <BreakdownTable
                 data={geoBreakdown.map((g) => ({
                   name: g.country,
-                  code: g.countryCode,
-                  count: g.count,
+                  subtitle: g.countryCode,
+                  value: g.count,
+                  percentage: g.percentage,
                 }))}
+                columns={["Country", "Visitors", "%"]}
               />
-            </Suspense>
-          </div>
-          <div className="lg:col-span-4">
-            <Suspense fallback={<ChartSkeleton />}>
-              <ReferrerBreakdown
-                data={referrerBreakdown.map((r) => ({
-                  referrer: r.referrerDomain,
-                  count: r.count,
-                }))}
-              />
-            </Suspense>
-          </div>
-        </div>
+            </TabsContent>
 
-        {/* Row 3: Recent Visits Table */}
-        <div className="border-b border-dashed border-border/80">
-          <Suspense fallback={<TableSkeleton />}>
-            <RecentVisitsTable
-              visits={visits}
-              hasMore={hasMore}
-              onLoadMore={loadMore}
-              isLoadingMore={isLoadingMore}
-            />
-          </Suspense>
-        </div>
+            <TabsContent value="devices">
+              <BreakdownTable
+                data={deviceBreakdown.map((d) => ({
+                  name: capitalizeFirst(d.deviceType),
+                  value: d.count,
+                  percentage: d.percentage,
+                }))}
+                columns={["Device", "Visitors", "%"]}
+              />
+            </TabsContent>
+
+            <TabsContent value="os">
+              <BreakdownTable
+                data={osBreakdown.map((o) => ({
+                  name: o.os,
+                  value: o.count,
+                  percentage: o.percentage,
+                }))}
+                columns={["Operating System", "Visitors", "%"]}
+              />
+            </TabsContent>
+
+            <TabsContent value="browsers">
+              <BreakdownTable
+                data={browserBreakdown.map((b) => ({
+                  name: b.browser,
+                  value: b.count,
+                  percentage: b.percentage,
+                }))}
+                columns={["Browser", "Visitors", "%"]}
+              />
+            </TabsContent>
+
+            <TabsContent value="utm">
+              <BreakdownTable
+                data={sourceBreakdown.map((s) => ({
+                  name: s.source,
+                  subtitle: s.medium !== "None" ? s.medium : undefined,
+                  value: s.count,
+                  percentage: s.percentage,
+                }))}
+                columns={["Source / Medium", "Visitors", "%"]}
+              />
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
     </div>
   );
 }
 
 /**
- * Loading Skeletons
+ * KPI Card Component
  */
-
-function FilterSkeleton() {
+function KPICard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="px-8 py-6 border-b border-dashed border-border/80 space-y-4">
-      <div className="h-4 w-12 bg-muted rounded animate-pulse" />
-      <div className="grid gap-3 md:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-9" />
-        ))}
+    <div className="p-4 bg-muted/20 border border-dashed border-border/80 rounded-lg">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+        {label}
       </div>
+      <div className="text-2xl font-bold tracking-tight">{value}</div>
     </div>
   );
 }
 
-function MetricsSkeleton() {
+/**
+ * Breakdown Table Component
+ */
+function BreakdownTable({
+  data,
+  columns,
+}: {
+  data: {
+    name: string;
+    subtitle?: string;
+    value: number;
+    secondary?: number;
+    percentage: number;
+  }[];
+  columns: string[];
+}) {
+  if (data.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground text-sm">
+        No data available for this period
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...data.map((d) => d.value));
+
   return (
-    <div className="grid gap-0 md:grid-cols-2 lg:grid-cols-5 border-b border-dashed border-border/80">
-      {[...Array(5)].map((_, i) => (
+    <div className="space-y-1">
+      {/* Header */}
+      <div className="grid gap-4 px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+           style={{ gridTemplateColumns: columns.length === 4 ? "1fr 80px 80px 60px" : "1fr 80px 60px" }}>
+        {columns.map((col) => (
+          <div key={col} className={col !== columns[0] ? "text-right" : ""}>
+            {col}
+          </div>
+        ))}
+      </div>
+
+      {/* Rows */}
+      {data.map((item, index) => (
         <div
-          key={i}
-          className="border-r border-dashed border-border/80 last:border-r-0 px-6 py-6"
+          key={`${item.name}-${index}`}
+          className="relative group"
         >
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-8 w-24" />
+          {/* Background bar */}
+          <div
+            className="absolute inset-y-0 left-0 bg-muted/30 rounded-md transition-all group-hover:bg-muted/50"
+            style={{ width: `${(item.value / maxValue) * 100}%` }}
+          />
+
+          {/* Content */}
+          <div
+            className="relative grid gap-4 px-3 py-2.5 text-sm"
+            style={{ gridTemplateColumns: columns.length === 4 ? "1fr 80px 80px 60px" : "1fr 80px 60px" }}
+          >
+            <div className="flex flex-col min-w-0">
+              <span className="truncate font-medium">{item.name}</span>
+              {item.subtitle && (
+                <span className="text-xs text-muted-foreground truncate">{item.subtitle}</span>
+              )}
+            </div>
+            <div className="text-right tabular-nums">{item.value.toLocaleString()}</div>
+            {item.secondary !== undefined && (
+              <div className="text-right tabular-nums text-muted-foreground">
+                {item.secondary.toLocaleString()}
+              </div>
+            )}
+            <div className="text-right tabular-nums text-muted-foreground">{item.percentage}%</div>
           </div>
         </div>
       ))}
@@ -158,26 +362,37 @@ function MetricsSkeleton() {
   );
 }
 
+/**
+ * Chart Skeleton
+ */
 function ChartSkeleton() {
   return (
-    <div className="px-8 py-6">
-      <div className="space-y-4">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-[300px] w-full" />
-      </div>
+    <div className="h-[300px] w-full">
+      <Skeleton className="h-full w-full" />
     </div>
   );
 }
 
-function TableSkeleton() {
-  return (
-    <div className="px-8 py-6">
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-32" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    </div>
-  );
+/**
+ * Format duration in seconds to human readable format
+ */
+function formatDuration(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) {
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+/**
+ * Capitalize first letter
+ */
+function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }

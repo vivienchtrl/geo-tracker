@@ -32,6 +32,10 @@ import type {
   GeoBreakdownData,
   ReferrerBreakdownData,
   SourceBreakdownData,
+  PathBreakdownData,
+  OsBreakdownData,
+  BrowserBreakdownData,
+  AnalyticsTimePeriod,
 } from "../types";
 import { getPageVisitsAction } from "../actions";
 
@@ -51,8 +55,12 @@ interface AnalyticsProviderProps {
     geoBreakdown: GeoBreakdownData[];
     referrerBreakdown: ReferrerBreakdownData[];
     sourceBreakdown: SourceBreakdownData[];
+    pathBreakdown: PathBreakdownData[];
+    osBreakdown: OsBreakdownData[];
+    browserBreakdown: BrowserBreakdownData[];
   };
   initialFilters?: AnalyticsFilters;
+  initialTimePeriod?: AnalyticsTimePeriod;
 }
 
 /**
@@ -64,12 +72,14 @@ export function AnalyticsProvider({
   projectId,
   initialData,
   initialFilters = {},
+  initialTimePeriod = "30d",
 }: AnalyticsProviderProps) {
   // State: Filters
   const [filters, setFilters] = useState<AnalyticsFilters>(initialFilters);
   const [selectedDevice, setSelectedDevice] = useState<string | undefined>();
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
   const [selectedReferrer, setSelectedReferrer] = useState<string | undefined>();
+  const [timePeriod, setTimePeriod] = useState<AnalyticsTimePeriod>(initialTimePeriod);
 
   // State: Data
   const [visits, setVisits] = useState<PageVisit[]>(initialData.visits);
@@ -87,6 +97,15 @@ export function AnalyticsProvider({
   );
   const [sourceBreakdown, setSourceBreakdown] = useState<SourceBreakdownData[]>(
     initialData.sourceBreakdown
+  );
+  const [pathBreakdown, setPathBreakdown] = useState<PathBreakdownData[]>(
+    initialData.pathBreakdown
+  );
+  const [osBreakdown, setOsBreakdown] = useState<OsBreakdownData[]>(
+    initialData.osBreakdown
+  );
+  const [browserBreakdown, setBrowserBreakdown] = useState<BrowserBreakdownData[]>(
+    initialData.browserBreakdown
   );
 
   // State: Loading
@@ -219,6 +238,7 @@ export function AnalyticsProvider({
       selectedDevice,
       selectedCountry,
       selectedReferrer,
+      timePeriod,
       visits,
       hasMore,
       isLoading: isLoading || isPending,
@@ -230,10 +250,14 @@ export function AnalyticsProvider({
       geoBreakdown,
       referrerBreakdown,
       sourceBreakdown,
+      pathBreakdown,
+      osBreakdown,
+      browserBreakdown,
       updateFilters,
       selectDevice,
       selectCountry,
       selectReferrer,
+      setTimePeriod,
       loadMore,
       refetch,
     }),
@@ -242,6 +266,7 @@ export function AnalyticsProvider({
       selectedDevice,
       selectedCountry,
       selectedReferrer,
+      timePeriod,
       visits,
       hasMore,
       isLoading,
@@ -254,6 +279,9 @@ export function AnalyticsProvider({
       geoBreakdown,
       referrerBreakdown,
       sourceBreakdown,
+      pathBreakdown,
+      osBreakdown,
+      browserBreakdown,
       updateFilters,
       selectDevice,
       selectCountry,

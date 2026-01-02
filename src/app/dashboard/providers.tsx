@@ -2,7 +2,7 @@
 
 import { UserProvider } from '@/features/auth/providers/user-provider'
 import { UserProjectsProvider } from '@/features/project/providers/user-projects-provider'
-import { PostHogProvider } from '@/features/analytics/providers/posthog-provider'
+import { PostHogProvider } from '@/lib/posthog/posthog-provider'
 import type { User } from '@/types/db'
 import type { ProjectWithRole } from '@/backend/services/project-service'
 

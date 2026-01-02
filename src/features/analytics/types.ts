@@ -9,6 +9,40 @@ import type { DashboardFilters } from "@/types/dashboard";
 import type { PageVisit } from "@/types/db";
 
 /**
+ * Time period for analytics
+ */
+export type AnalyticsTimePeriod = "7d" | "30d" | "90d" | "12m";
+
+/**
+ * Path/Page breakdown data
+ */
+export type PathBreakdownData = {
+  path: string;
+  title: string;
+  views: number;
+  uniqueViews: number;
+  percentage: number;
+};
+
+/**
+ * OS breakdown data
+ */
+export type OsBreakdownData = {
+  os: string;
+  count: number;
+  percentage: number;
+};
+
+/**
+ * Browser breakdown data
+ */
+export type BrowserBreakdownData = {
+  browser: string;
+  count: number;
+  percentage: number;
+};
+
+/**
  * Context type for AnalyticsProvider
  */
 export type AnalyticsContextType = {
@@ -17,6 +51,7 @@ export type AnalyticsContextType = {
   selectedDevice?: string;
   selectedCountry?: string;
   selectedReferrer?: string;
+  timePeriod: AnalyticsTimePeriod;
 
   // Data
   visits: PageVisit[];
@@ -34,12 +69,16 @@ export type AnalyticsContextType = {
   geoBreakdown: GeoBreakdownData[];
   referrerBreakdown: ReferrerBreakdownData[];
   sourceBreakdown: SourceBreakdownData[];
+  pathBreakdown: PathBreakdownData[];
+  osBreakdown: OsBreakdownData[];
+  browserBreakdown: BrowserBreakdownData[];
 
   // Filter Actions
   updateFilters: (filters: Partial<AnalyticsFilters>) => void;
   selectDevice: (deviceType?: string) => void;
   selectCountry: (countryCode?: string) => void;
   selectReferrer: (referrerDomain?: string) => void;
+  setTimePeriod: (period: AnalyticsTimePeriod) => void;
 
   // Data Actions
   loadMore: () => Promise<void>;

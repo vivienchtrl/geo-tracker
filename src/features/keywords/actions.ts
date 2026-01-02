@@ -7,7 +7,6 @@ import { revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { createKeywordSchema, UpdateKeywordInput, CreateKeywordInput } from "@/backend/validators/keywords.validators"
-import { generateKeywordPrompt } from "@/backend/services/ai/keywords-ai.service"
 
 async function getSessionUser() {
   const supabase = await createClient(cookies())
@@ -34,7 +33,7 @@ export async function createKeywordAction(data: CreateKeywordInput) {
       ...validation.data
     })
 
-    revalidateTag('keywords', 'page')
+    revalidateTag('keywords')
     return { success: true }
   } catch (err) {
     console.error(err)
@@ -49,27 +48,17 @@ export async function updateKeywordAction(id: string, data: UpdateKeywordInput) 
         if (!project) throw new Error("No project found")
         
         await db.update(keywords).set(data).where(eq(keywords.id, id))
-        revalidateTag('keywords', 'page')
+        revalidateTag('keywords')
         return { success: true }
     } catch {
         return { error: "Failed update" }
     }
 }
 
-export async function generateAIPromptAction(keywords: string, intent: string) {
-    try {
-        const result = await generateKeywordPrompt(keywords, intent)
-        return { success: true, data: result }
-    } catch (err) {
-        console.error("AI Prompt generation error:", err)
-        return { error: "Failed to generate AI prompt" }
-    }
-}
-
 export async function deleteKeywordAction(id: string) {
     try {
         await db.delete(keywords).where(eq(keywords.id, id))
-        revalidateTag('keywords', 'page')
+        revalidateTag('keywords')
         return { success: true }
     } catch {
         return { error: "Failed delete" }

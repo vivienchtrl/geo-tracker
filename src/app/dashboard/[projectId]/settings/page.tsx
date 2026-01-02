@@ -2,13 +2,15 @@ import { notFound } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MembersTab } from "@/features/project/components/members-tab"
-import { CreditCard, Globe } from "lucide-react"
+import { LlmSettings } from "@/features/project/components/llm-settings"
+import { Globe } from "lucide-react"
 import { getProjectMembers, getPendingInvitations } from "@/backend/services/project-members.service"
 import { getProjectWithRole } from "@/backend/services/project-service"
 import { getCurrentUser } from "@/backend/services/user-service"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import type { LlmService } from "@/backend/validators/project.validators"
 
 interface SettingsPageProps {
   params: Promise<{ projectId: string }>
@@ -74,7 +76,6 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
             <TabsList className="bg-transparent border-dashed border border-border/60 p-1">
               <TabsTrigger value="general" className="uppercase text-[10px] tracking-widest font-bold px-8">General</TabsTrigger>
               <TabsTrigger value="team" className="uppercase text-[10px] tracking-widest font-bold px-8">Team</TabsTrigger>
-              <TabsTrigger value="billing" className="uppercase text-[10px] tracking-widest font-bold px-8">Billing</TabsTrigger>
             </TabsList>
           </div>
 
@@ -123,6 +124,14 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
                   </Card>
                 </div>
 
+                <div className="lg:col-span-12 border-t border-dashed border-border/80">
+                  <LlmSettings
+                    projectId={projectId}
+                    currentEnabledLlm={(project.enabledLlm || ['chatgpt', 'perplexity']) as LlmService[]}
+                    isOwner={isOwner}
+                  />
+                </div>
+
                 {isOwner && (
                   <div className="lg:col-span-12 border-t border-dashed border-border/80">
                     <Card variant="bento" className="border-0 bg-transparent px-8 py-8">
@@ -159,37 +168,7 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
                   currentUserRole={role}
                 />
               </div>
-            </TabsContent>
-
-            {/* Billing Tab */}
-            <TabsContent value="billing" className="outline-none m-0">
-              <div className="min-h-full border-b border-dashed border-border/80">
-                <Card variant="bento" className="border-0 bg-transparent px-8 py-16">
-                  <CardContent className="px-0 flex flex-col items-center justify-center text-center space-y-8">
-                    <div className="flex h-16 w-16 items-center justify-center border border-dashed border-primary/40 bg-primary/5 text-primary">
-                      <CreditCard className="h-8 w-8" />
-                    </div>
-                    <div className="space-y-3">
-                      <h3 className="text-xl font-bold uppercase tracking-tighter">Stripe Integration Coming Soon</h3>
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                        We are currently integrating Stripe for seamless billing management. 
-                      </p>
-                    </div>
-                    <div className="border border-dashed border-border/80 p-8 bg-muted/5 max-w-md w-full text-left">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-primary/80">Architecture Plan:</p>
-                      <ul className="space-y-3">
-                        {['Subscription tracking via Stripe Webhooks', 'Usage limits based on Plan (Free/Pro/Enterprise)', 'PostHog Cohorts based on Plan Status'].map((item, i) => (
-                          <li key={i} className="flex items-start gap-3 text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                            <div className="h-1 w-1 bg-primary mt-1.5 shrink-0" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
+            </TabsContent> 
           </div>
         </Tabs>
       </div>

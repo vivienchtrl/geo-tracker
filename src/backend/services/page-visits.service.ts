@@ -512,3 +512,151 @@ export const getSourceBreakdown = unstable_cache(
   ["analytics-source-breakdown"],
   { revalidate: 300, tags: ["page-visits"] }
 );
+
+/**
+ * Get path/page breakdown
+ */
+export const getPathBreakdown = unstable_cache(
+  async (
+    projectId: string,
+    options: { startDate?: Date; endDate?: Date } = {}
+  ) => {
+    const { startDate, endDate } = options;
+
+    const conditions = [eq(pageVisits.projectId, projectId)];
+
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+
+    if (startDate) {
+      conditions.push(gte(pageVisits.timestamp, startDate));
+    } else {
+      conditions.push(gte(pageVisits.timestamp, defaultStartDate));
+    }
+
+    if (endDate) {
+      conditions.push(lte(pageVisits.timestamp, endDate));
+    }
+
+    const breakdown = await db
+      .select({
+        path: pageVisits.path,
+        title: pageVisits.title,
+        count: dbCount(),
+        uniqueVisitors: sql<number>`COUNT(DISTINCT ${pageVisits.visitorId})`,
+      })
+      .from(pageVisits)
+      .where(and(...conditions))
+      .groupBy(pageVisits.path, pageVisits.title)
+      .orderBy(desc(dbCount()))
+      .limit(50);
+
+    const total = breakdown.reduce((sum, row) => sum + Number(row.count), 0);
+
+    return breakdown.map((row) => ({
+      path: row.path || "/",
+      title: row.title || row.path || "Untitled",
+      views: Number(row.count),
+      uniqueViews: Number(row.uniqueVisitors),
+      percentage: total > 0 ? Math.round((Number(row.count) / total) * 100) : 0,
+    }));
+  },
+  ["analytics-path-breakdown"],
+  { revalidate: 300, tags: ["page-visits"] }
+);
+
+/**
+ * Get OS breakdown
+ */
+export const getOsBreakdown = unstable_cache(
+  async (
+    projectId: string,
+    options: { startDate?: Date; endDate?: Date } = {}
+  ) => {
+    const { startDate, endDate } = options;
+
+    const conditions = [eq(pageVisits.projectId, projectId)];
+
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+
+    if (startDate) {
+      conditions.push(gte(pageVisits.timestamp, startDate));
+    } else {
+      conditions.push(gte(pageVisits.timestamp, defaultStartDate));
+    }
+
+    if (endDate) {
+      conditions.push(lte(pageVisits.timestamp, endDate));
+    }
+
+    const breakdown = await db
+      .select({
+        os: pageVisits.os,
+        count: dbCount(),
+      })
+      .from(pageVisits)
+      .where(and(...conditions))
+      .groupBy(pageVisits.os)
+      .orderBy(desc(dbCount()))
+      .limit(20);
+
+    const total = breakdown.reduce((sum, row) => sum + Number(row.count), 0);
+
+    return breakdown.map((row) => ({
+      os: row.os || "Unknown",
+      count: Number(row.count),
+      percentage: total > 0 ? Math.round((Number(row.count) / total) * 100) : 0,
+    }));
+  },
+  ["analytics-os-breakdown"],
+  { revalidate: 300, tags: ["page-visits"] }
+);
+
+/**
+ * Get browser breakdown
+ */
+export const getBrowserBreakdown = unstable_cache(
+  async (
+    projectId: string,
+    options: { startDate?: Date; endDate?: Date } = {}
+  ) => {
+    const { startDate, endDate } = options;
+
+    const conditions = [eq(pageVisits.projectId, projectId)];
+
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+
+    if (startDate) {
+      conditions.push(gte(pageVisits.timestamp, startDate));
+    } else {
+      conditions.push(gte(pageVisits.timestamp, defaultStartDate));
+    }
+
+    if (endDate) {
+      conditions.push(lte(pageVisits.timestamp, endDate));
+    }
+
+    const breakdown = await db
+      .select({
+        browser: pageVisits.browser,
+        count: dbCount(),
+      })
+      .from(pageVisits)
+      .where(and(...conditions))
+      .groupBy(pageVisits.browser)
+      .orderBy(desc(dbCount()))
+      .limit(20);
+
+    const total = breakdown.reduce((sum, row) => sum + Number(row.count), 0);
+
+    return breakdown.map((row) => ({
+      browser: row.browser || "Unknown",
+      count: Number(row.count),
+      percentage: total > 0 ? Math.round((Number(row.count) / total) * 100) : 0,
+    }));
+  },
+  ["analytics-browser-breakdown"],
+  { revalidate: 300, tags: ["page-visits"] }
+);

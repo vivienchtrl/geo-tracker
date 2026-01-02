@@ -26,6 +26,13 @@ export async function searchPerplexity(
         { role: 'system', content: `${systemPrompt} ${locationContext}` },
         { role: 'user', content: term }
       ],
+      web_search_options: location ? {
+        user_location: {
+          country: location.country,
+          region: location.region,
+          city: location.city
+        }
+      } : undefined
     }),
   })
 

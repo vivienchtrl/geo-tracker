@@ -94,9 +94,26 @@ export function useAnalyticsKPIs() {
  * Hook to get chart data
  */
 export function useAnalyticsCharts() {
-  const { timeline, deviceBreakdown, geoBreakdown, referrerBreakdown, sourceBreakdown } =
-    useAnalytics();
-  return { timeline, deviceBreakdown, geoBreakdown, referrerBreakdown, sourceBreakdown };
+  const {
+    timeline,
+    deviceBreakdown,
+    geoBreakdown,
+    referrerBreakdown,
+    sourceBreakdown,
+    pathBreakdown,
+    osBreakdown,
+    browserBreakdown,
+  } = useAnalytics();
+  return {
+    timeline,
+    deviceBreakdown,
+    geoBreakdown,
+    referrerBreakdown,
+    sourceBreakdown,
+    pathBreakdown,
+    osBreakdown,
+    browserBreakdown,
+  };
 }
 
 /**
@@ -129,4 +146,36 @@ export function useGeoBreakdown() {
 export function useReferrerBreakdown() {
   const { referrerBreakdown } = useAnalytics();
   return referrerBreakdown;
+}
+
+/**
+ * Hook for path breakdown only
+ */
+export function usePathBreakdown() {
+  const { pathBreakdown } = useAnalytics();
+  return pathBreakdown;
+}
+
+/**
+ * Hook for OS breakdown only
+ */
+export function useOsBreakdown() {
+  const { osBreakdown } = useAnalytics();
+  return osBreakdown;
+}
+
+/**
+ * Hook for browser breakdown only
+ */
+export function useBrowserBreakdown() {
+  const { browserBreakdown } = useAnalytics();
+  return browserBreakdown;
+}
+
+/**
+ * Hook for time period
+ */
+export function useTimePeriod() {
+  const { timePeriod, setTimePeriod } = useAnalytics();
+  return { timePeriod, setTimePeriod };
 }

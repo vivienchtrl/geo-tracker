@@ -17,6 +17,10 @@ export type {
   ReferrerBreakdownData,
   SourceBreakdownData,
   TopPageData,
+  PathBreakdownData,
+  OsBreakdownData,
+  BrowserBreakdownData,
+  AnalyticsTimePeriod,
 } from "./types";
 
 // Provider
@@ -36,4 +40,8 @@ export {
   useDeviceBreakdown,
   useGeoBreakdown,
   useReferrerBreakdown,
+  usePathBreakdown,
+  useOsBreakdown,
+  useBrowserBreakdown,
+  useTimePeriod,
 } from "./hooks/use-analytics";
